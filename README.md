@@ -23,7 +23,43 @@ Open <http://localhost:8080/wp-admin> and sign in with:
 - Username: `admin`
 - Password: `tracezilla`
 
-Create REST API credentials under **WooCommerce → Settings → Advanced → REST API**. Select **Read/Write** access when examples need to create or update data.
+### Create WooCommerce REST API credentials
+
+After signing in, open the REST API settings directly:
+
+<http://localhost:8080/wp-admin/admin.php?page=wc-settings&tab=advanced&section=keys>
+
+The corresponding WordPress menu path is:
+
+**WooCommerce → Settings → Advanced → REST API**
+
+If WooCommerce displays its setup or onboarding screen, it is safe to skip it
+for this local integration sandbox. You do not need to configure payments,
+shipping or a theme before creating an API key.
+
+Select **Create an API key** or **Add key**, then use:
+
+- Description: `Tracezilla local development`
+- User: `admin`
+- Permissions: `Read/Write`
+
+Select **Generate API key**. Copy both values immediately: WooCommerce only
+shows the complete Consumer Secret once.
+
+If the **WooCommerce** menu is entirely missing, confirm that its plugin is
+active:
+
+```bash
+docker compose run --rm --entrypoint wp wp-cli plugin status woocommerce
+```
+
+If necessary, activate it with:
+
+```bash
+docker compose run --rm --entrypoint wp wp-cli plugin activate woocommerce
+```
+
+Reload the WordPress administration page after activation.
 
 Copy the example environment file and add the generated credentials:
 
@@ -35,6 +71,8 @@ For the local sandbox, retain this URL:
 
 ```dotenv
 WOOCOMMERCE_URL=http://host.docker.internal:8080
+WOOCOMMERCE_CONSUMER_KEY=ck_...
+WOOCOMMERCE_CONSUMER_SECRET=cs_...
 ```
 
 Install the PHP dependencies and test the connection:
