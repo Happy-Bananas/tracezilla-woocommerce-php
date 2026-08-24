@@ -1,7 +1,11 @@
+name: tracezilla-woocommerce-integration
+
 services:
-  app:
+  php:
     build: .
     working_dir: /app
+    env_file:
+      - .env
     volumes:
       - .:/app
       - composer-cache:/tmp/composer-cache
@@ -10,60 +14,5 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
 
-  database:
-    image: mariadb:11.4
-    profiles: [sandbox]
-    environment:
-      MARIADB_DATABASE: wordpress
-      MARIADB_USER: wordpress
-      MARIADB_PASSWORD: wordpress
-      MARIADB_RANDOM_ROOT_PASSWORD: "1"
-    volumes:
-      - wordpress-database:/var/lib/mysql
-    healthcheck:
-      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  wordpress:
-    image: wordpress:6.9.1-php8.3-apache
-    profiles: [sandbox]
-    depends_on:
-      database:
-        condition: service_healthy
-    ports:
-      - "8080:80"
-    environment:
-      WORDPRESS_DB_HOST: database
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress
-      WORDPRESS_DB_NAME: wordpress
-    volumes:
-      - wordpress-files:/var/www/html
-
-  wp-cli:
-    image: wordpress:cli-php8.3
-    profiles: [sandbox]
-    user: "33:33"
-    depends_on:
-      database:
-        condition: service_healthy
-      wordpress:
-        condition: service_started
-    environment:
-      HOME: /tmp
-      WORDPRESS_DB_HOST: database
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress
-      WORDPRESS_DB_NAME: wordpress
-    volumes:
-      - wordpress-files:/var/www/html
-      - ./sandbox:/sandbox:ro
-    entrypoint: [sh, /sandbox/setup.sh]
-
 volumes:
   composer-cache:
-  wordpress-database:
-  wordpress-files:
-
