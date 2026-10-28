@@ -36,6 +36,22 @@ Validate the WooCommerce connection:
 docker compose run --rm php php bin/test-connection
 ```
 
+## Seed tracezilla development data
+
+Set `TRACEZILLA_TEAM_SLUG` and `TRACEZILLA_API_KEY` for a development company
+in `.env`. Then preview and apply `seeds/woocommerce-sandbox.yaml`:
+
+```bash
+docker compose run --rm php php bin/seed-tracezilla
+docker compose run --rm php php bin/seed-tracezilla --execute --confirm
+```
+
+The seed creates missing partners, locations, SKUs, and received purchase
+orders, and skips records that already exist. Never run it against a
+production team.
+
+## Workflows
+
 The commands use ordinary PHP and Composer, following the same structure as
 the Shopify PHP examples. Additional catalog, order, and inventory workflows
 will be added as independent commands in `bin/`.
