@@ -8,5 +8,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-RUN git config --global --add safe.directory /app
+# System-wide, so it applies to whichever user compose runs the container as.
+RUN git config --system --add safe.directory /app \
+    && mkdir -p /tmp/composer-cache \
+    && chmod 1777 /tmp/composer-cache
 

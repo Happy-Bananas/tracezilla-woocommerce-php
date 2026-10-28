@@ -1,0 +1,80 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Tracezilla\WooCommerce\Seed\SeedDefinition;
+use Tracezilla\WooCommerce\Seed\Seeder;
+use Tracezilla\WooCommerce\Seed\SeedResult;
+use Tracezilla\WooCommerce\Seed\TracezillaSeedGateway;
+use Tracezilla\WooCommerce\Tracezilla\Client;
+use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
+use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+
+$usage = <<<'TEXT'
+    Usage: php bin/seed-tracezilla [<seed-file>] [--execute --confirm]
+
+    Creates the partners, locations, SKUs and purchase orders described in the
+    seed file in the tracezilla team from .env. Existing records are skipped.
+    Locations under own_company are added to the partner named by
+    TRACEZILLA_OWN_COMPANY.
+    Without --execute --confirm nothing is written (dry run).
+
+    Default seed file: seeds/woocommerce-sandbox.yaml
+
+    TEXT;
+
+$arguments = array_slice($argv, 1);
+if (in_array('--help', $arguments, true) || in_array('-h', $arguments, true)) {
+    echo $usage;
+    exit(0);
+}
+
+$execute = in_array('--execute', $arguments, true);
+$confirm = in_array('--confirm', $arguments, true);
+$files = array_values(array_filter($arguments, static fn (string $argument): bool => ! str_starts_with($argument, '--')));
+$unknown = array_diff(array_filter($arguments, static fn (string $argument): bool => str_starts_with($argument, '--')), ['--execute', '--confirm']);
+
+if ($unknown !== [] || count($files) > 1) {
+    fwrite(STDERR, $usage);
+    exit(2);
+}
+if ($execute !== $confirm) {
+    fwrite(STDERR, "Writing requires both --execute and --confirm. Nothing was written.\n");
+    exit(2);
+}
+
+try {
+    $definition = SeedDefinition::fromFile($files[0] ?? dirname(__DIR__).'/seeds/woocommerce-sandbox.yaml');
+    $configuration = TracezillaConfiguration::fromEnvironment(dirname(__DIR__));
+
+    echo ($execute ? 'Seeding' : 'Dry run for')." tracezilla team [{$configuration->teamSlug}]\n\n";
+
+    $ownCompany = (string) getenv('TRACEZILLA_OWN_COMPANY');
+    $tokens = TokenProvider::fromConfiguration($configuration);
+    $client = new Client($configuration, $tokens);
+    $seeder = new Seeder(new TracezillaSeedGateway($client), $ownCompany !== '' ? $ownCompany : null, $tokens->userId());
+    $result = $seeder->run($definition, $execute);
+} catch (Throwable $exception) {
+    fwrite(STDERR, 'Seed failed: '.$exception->getMessage()."\n");
+    exit(1);
+}
+
+foreach ($result->items() as $item) {
+    printf("%-15s %-14s %-35s %s\n", $item['type'], $item['action'], $item['key'], $item['detail']);
+}
+
+echo "\n";
+foreach ($result->counts() as $action => $count) {
+    echo "{$action}: {$count}\n";
+}
+if (! $execute && ($result->counts()[SeedResult::WOULD_CREATE] ?? 0) > 0) {
+    echo "\nDry run only. Re-run with --execute --confirm to write.\n";
+}
+
+exit($result->isSuccessful() ? 0 : 1);

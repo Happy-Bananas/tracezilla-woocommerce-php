@@ -1,0 +1,51 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
+use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
+
+require dirname(__DIR__).'/vendor/autoload.php';
+
+Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+
+// Exchanges a tracezilla username and password for OAuth tokens once. The
+// password is not stored; later runs renew the token with the refresh token.
+
+function prompt(string $label, bool $hidden = false): string
+{
+    fwrite(STDERR, $label);
+    $interactive = $hidden && stream_isatty(STDIN);
+    if ($interactive) {
+        shell_exec('stty -echo');
+    }
+    $value = fgets(STDIN);
+    if ($interactive) {
+        shell_exec('stty echo');
+        fwrite(STDERR, "\n");
+    }
+
+    return trim((string) $value);
+}
+
+try {
+    $configuration = TracezillaConfiguration::fromEnvironment(dirname(__DIR__));
+
+    echo "Log in to tracezilla team [{$configuration->teamSlug}]\n";
+    $username = prompt('Username (email): ');
+    $password = prompt('Password: ', hidden: true);
+    if ($username === '' || $password === '') {
+        throw new RuntimeException('Username and password are required.');
+    }
+
+    $tokens = TokenProvider::fromConfiguration($configuration)->login($username, $password);
+} catch (Throwable $exception) {
+    fwrite(STDERR, 'Login failed: '.$exception->getMessage()."\n");
+    exit(1);
+}
+
+echo "Logged in. Tokens saved to {$configuration->tokenFile}\n";
+echo 'The access token expires '.$tokens->expiresAt->format('Y-m-d').' and is renewed automatically '
+    .TokenProvider::RENEW_WITHIN_DAYS." days before that by any integration command.\n";
