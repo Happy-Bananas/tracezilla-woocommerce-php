@@ -25,7 +25,7 @@ $usage = <<<'TEXT'
     TRACEZILLA_OWN_COMPANY.
     Without --execute --confirm nothing is written (dry run).
 
-    Default seed file: seeds/woocommerce-sandbox.yaml
+    Default seed file: seeds/tracezilla.yaml
 
     TEXT;
 
@@ -50,7 +50,7 @@ if ($execute !== $confirm) {
 }
 
 try {
-    $definition = SeedDefinition::fromFile($files[0] ?? dirname(__DIR__).'/seeds/woocommerce-sandbox.yaml');
+    $definition = SeedDefinition::fromFile($files[0] ?? dirname(__DIR__).'/seeds/tracezilla.yaml');
     $configuration = TracezillaConfiguration::fromEnvironment(dirname(__DIR__));
 
     echo ($execute ? 'Seeding' : 'Dry run for')." tracezilla team [{$configuration->teamSlug}]\n\n";

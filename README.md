@@ -53,7 +53,7 @@ keep working. Keep the `var/` directory between runs and out of Git.
 ## Seed tracezilla development data
 
 Set `TRACEZILLA_OWN_COMPANY` to your company's partner name in tracezilla.
-Then preview and apply `seeds/woocommerce-sandbox.yaml`:
+Then preview and apply `seeds/tracezilla.yaml`:
 
 ```bash
 docker compose run --rm php php bin/seed-tracezilla

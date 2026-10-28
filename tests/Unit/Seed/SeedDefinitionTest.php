@@ -10,9 +10,9 @@ use Tracezilla\WooCommerce\Seed\SeedDefinition;
 
 final class SeedDefinitionTest extends TestCase
 {
-    public function test_the_woocommerce_sandbox_seed_is_valid(): void
+    public function test_the_tracezilla_seed_is_valid(): void
     {
-        $definition = SeedDefinition::fromFile(dirname(__DIR__, 3).'/seeds/woocommerce-sandbox.yaml');
+        $definition = SeedDefinition::fromFile(dirname(__DIR__, 3).'/seeds/tracezilla.yaml');
 
         self::assertCount(2, $definition->partners);
         self::assertTrue($definition->usesOwnCompany());
