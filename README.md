@@ -36,10 +36,24 @@ Validate the WooCommerce connection:
 docker compose run --rm php php bin/test-connection
 ```
 
+## Authenticate with tracezilla
+
+Create an OAuth client in tracezilla (**Settings → My account → API Tokens**)
+and set `TRACEZILLA_TEAM_SLUG`, `TRACEZILLA_CLIENT_ID`, and
+`TRACEZILLA_CLIENT_SECRET` in `.env`. Then log in once:
+
+```bash
+docker compose run --rm php php bin/tracezilla-login
+```
+
+The password is not stored. Tokens are saved in `var/tracezilla-token.json`
+and renewed automatically 30 days before they expire, so scheduled commands
+keep working. Keep the `var/` directory between runs and out of Git.
+
 ## Seed tracezilla development data
 
-Set `TRACEZILLA_TEAM_SLUG` and `TRACEZILLA_API_KEY` for a development company
-in `.env`. Then preview and apply `seeds/woocommerce-sandbox.yaml`:
+Set `TRACEZILLA_OWN_COMPANY` to your company's partner name in tracezilla.
+Then preview and apply `seeds/woocommerce-sandbox.yaml`:
 
 ```bash
 docker compose run --rm php php bin/seed-tracezilla

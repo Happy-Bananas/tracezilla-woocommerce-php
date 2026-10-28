@@ -9,6 +9,7 @@ use Tracezilla\WooCommerce\Seed\Seeder;
 use Tracezilla\WooCommerce\Seed\SeedResult;
 use Tracezilla\WooCommerce\Seed\TracezillaSeedGateway;
 use Tracezilla\WooCommerce\Tracezilla\Client;
+use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
 use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 
 require dirname(__DIR__).'/vendor/autoload.php';
@@ -50,12 +51,13 @@ if ($execute !== $confirm) {
 
 try {
     $definition = SeedDefinition::fromFile($files[0] ?? dirname(__DIR__).'/seeds/woocommerce-sandbox.yaml');
-    $configuration = TracezillaConfiguration::fromEnvironment();
+    $configuration = TracezillaConfiguration::fromEnvironment(dirname(__DIR__));
 
     echo ($execute ? 'Seeding' : 'Dry run for')." tracezilla team [{$configuration->teamSlug}]\n\n";
 
     $ownCompany = (string) getenv('TRACEZILLA_OWN_COMPANY');
-    $seeder = new Seeder(new TracezillaSeedGateway(new Client($configuration)), $ownCompany !== '' ? $ownCompany : null);
+    $client = new Client($configuration, TokenProvider::fromConfiguration($configuration));
+    $seeder = new Seeder(new TracezillaSeedGateway($client), $ownCompany !== '' ? $ownCompany : null);
     $result = $seeder->run($definition, $execute);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Seed failed: '.$exception->getMessage()."\n");

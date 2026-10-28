@@ -6,19 +6,23 @@ namespace Tracezilla\WooCommerce\Tracezilla;
 
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\RequestException;
+use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 
 final class Client
 {
     private HttpClient $http;
 
-    public function __construct(TracezillaConfiguration $configuration)
-    {
-        $this->http = new HttpClient([
+    public function __construct(
+        TracezillaConfiguration $configuration,
+        private TokenProvider $tokens,
+        ?HttpClient $http = null,
+    ) {
+        $this->http = $http ?? new HttpClient([
             'base_uri' => "{$configuration->baseUrl}/api/v1/{$configuration->teamSlug}/",
             'timeout' => $configuration->timeout,
             'connect_timeout' => $configuration->connectTimeout,
-            'headers' => ['Accept' => 'application/json', 'Authorization' => "Bearer {$configuration->apiKey}"],
+            'headers' => ['Accept' => 'application/json'],
         ]);
     }
 
@@ -77,8 +81,18 @@ final class Client
     /** @return array<string, mixed> */
     private function send(string $method, string $path, array $options): array
     {
+        $token = $this->tokens->accessToken();
+
         try {
-            $response = $this->http->request($method, ltrim($path, '/'), $options);
+            try {
+                $response = $this->request($method, $path, $options, $token);
+            } catch (RequestException $exception) {
+                if ($exception->getResponse()?->getStatusCode() !== 401) {
+                    throw $exception;
+                }
+                // A revoked or otherwise rejected token: renew it once and retry.
+                $response = $this->request($method, $path, $options, $this->tokens->renewAfterRejection($token));
+            }
         } catch (RequestException $exception) {
             // Validation errors are explained in the body; Guzzle's message truncates it.
             $body = $exception->getResponse()?->getBody()->__toString() ?? '';
@@ -90,5 +104,12 @@ final class Client
         }
 
         return json_decode((string) $response->getBody(), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    private function request(string $method, string $path, array $options, string $token): ResponseInterface
+    {
+        $options['headers'] = ['Authorization' => "Bearer {$token}"];
+
+        return $this->http->request($method, ltrim($path, '/'), $options);
     }
 }
