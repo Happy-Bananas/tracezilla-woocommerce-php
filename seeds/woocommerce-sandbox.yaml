@@ -10,6 +10,14 @@
 #   skus                    -> sku_code
 #   purchase_orders         -> ext_ref
 # Existing records are never updated; re-running the seed skips them.
+#
+# tracezilla defaults that matter:
+#   - sku_code is at most 17 characters.
+#   - New locations are warehouses unless is_warehouse: false is set. In
+#     tracezilla "warehouse" means the location can be used for pickups and
+#     deliveries, so supplier pickup locations need it; customer addresses don't.
+#   - New partners are owned by the user who runs the seed unless
+#     owned_by_id is set.
 
 version: 1
 
@@ -37,6 +45,8 @@ partners:
       - ref: TZ-SUPPLIER-HQ
         name: TZ Supplier headquarters
         is_primary: true
+        # Purchase orders pick up from here, which requires the warehouse role.
+        is_warehouse: true
         address: Testvej 1
         zip: '8000'
         city: Aarhus C
@@ -52,6 +62,7 @@ partners:
       - ref: TZ-WEBSHOP-HQ
         name: TZ Webshop headquarters
         is_primary: true
+        is_warehouse: false
         is_invoice_to: true
         address: Testvej 2
         zip: '8000'
@@ -90,7 +101,7 @@ skus:
     weight_factor_gross: 0.42
 
   # Variations of the WooCommerce product TZ-COFFEE-001.
-  - sku_code: TZ-COFFEE-001-250G
+  - sku_code: TZ-COFFEE-001-01
     global_name: House Blend Coffee Beans 250 g
     category: finished_good
     unit_of_measure: pcs
@@ -99,7 +110,7 @@ skus:
     weight_factor_net: 0.25
     weight_factor_gross: 0.28
 
-  - sku_code: TZ-COFFEE-001-1KG
+  - sku_code: TZ-COFFEE-001-02
     global_name: House Blend Coffee Beans 1 kg
     category: finished_good
     unit_of_measure: pcs
@@ -151,8 +162,8 @@ purchase_orders:
     lines:
       - { sku_code: TZ-FRUIT-001, quantity: 80, unit_price: 5, price_per: stock_unit }
       - { sku_code: TZ-FRUIT-002, quantity: 50, unit_price: 12, price_per: stock_unit }
-      - { sku_code: TZ-COFFEE-001-250G, quantity: 10, unit_price: 20, price_per: stock_unit }
-      - { sku_code: TZ-COFFEE-001-1KG, quantity: 15, unit_price: 70, price_per: stock_unit }
+      - { sku_code: TZ-COFFEE-001-01, quantity: 10, unit_price: 20, price_per: stock_unit }
+      - { sku_code: TZ-COFFEE-001-02, quantity: 15, unit_price: 70, price_per: stock_unit }
       - { sku_code: TZ-DAIRY-001, quantity: 21, unit_price: 20, price_per: stock_unit }
       - { sku_code: TZ-DAIRY-002, quantity: 2, unit_price: 96, price_per: lot_unit }
       - { sku_code: TZ-RAW-001, quantity: 4, unit_price: 60, price_per: stock_unit }

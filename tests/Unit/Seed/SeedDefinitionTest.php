@@ -28,7 +28,7 @@ final class SeedDefinitionTest extends TestCase
                 'partner' => [],
                 'own_company' => ['name' => 'Mine'],
                 'partners' => [['ref' => 'TZ-A', 'country' => 'DK'], ['ref' => 'TZ-A', 'name' => 'A', 'country' => 'DK'], ['ref' => 'own_company', 'name' => 'B', 'country' => 'DK']],
-                'skus' => [['sku_code' => 'TZ-1']],
+                'skus' => [['sku_code' => 'TZ-1'], ['sku_code' => 'TZ-COFFEE-001-250G', 'unit_of_measure' => 'pcs', 'lot_unit' => 'pcs', 'weight_factor_net' => 1, 'weight_factor_gross' => 1]],
                 'purchase_orders' => [[
                     'ext_ref' => 'TZ-PO',
                     'supplier' => 'TZ-A',
@@ -52,6 +52,7 @@ final class SeedDefinitionTest extends TestCase
             'own_company may only contain locations.',
             'partners[2].ref [own_company] is reserved for the own company.',
             'skus[0].unit_of_measure is required.',
+            'skus[1].sku_code [TZ-COFFEE-001-250G] is longer than 17 characters.',
             'purchase_orders[0].supplier must be { partner: <ref>, location: <ref> }.',
             'purchase_orders[0].receive must be true or false.',
             'purchase_orders[0].lines[0].quantity is required.',

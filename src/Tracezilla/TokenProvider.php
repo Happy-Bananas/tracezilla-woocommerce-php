@@ -98,6 +98,18 @@ final readonly class TokenProvider
         });
     }
 
+    /** The tracezilla user ID the token belongs to (the JWT "sub" claim). */
+    public function userId(): int
+    {
+        $payload = explode('.', $this->accessToken())[1] ?? '';
+        $claims = json_decode((string) base64_decode(strtr($payload, '-_', '+/')), true);
+        if (! is_numeric($claims['sub'] ?? null)) {
+            throw new RuntimeException('The tracezilla access token does not identify a user.');
+        }
+
+        return (int) $claims['sub'];
+    }
+
     public function expiresAt(): DateTimeImmutable
     {
         return $this->stored()->expiresAt;

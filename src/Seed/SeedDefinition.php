@@ -15,6 +15,9 @@ final readonly class SeedDefinition
 {
     public const VERSION = 1;
 
+    /** tracezilla rejects longer SKU codes. */
+    public const MAX_SKU_CODE_LENGTH = 17;
+
     /** Partner reference for the team's own company, configured outside the seed file. */
     public const OWN_COMPANY = 'own_company';
 
@@ -85,6 +88,9 @@ final readonly class SeedDefinition
             $at = "skus[{$index}]";
             self::requireFields($sku, ['sku_code', 'unit_of_measure', 'lot_unit', 'weight_factor_net', 'weight_factor_gross'], $at, $errors);
             self::unique($skuCodes, $sku['sku_code'] ?? null, $at, $errors);
+            if (is_string($sku['sku_code'] ?? null) && strlen($sku['sku_code']) > self::MAX_SKU_CODE_LENGTH) {
+                $errors[] = "{$at}.sku_code [{$sku['sku_code']}] is longer than ".self::MAX_SKU_CODE_LENGTH.' characters.';
+            }
         }
 
         $extRefs = [];

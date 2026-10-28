@@ -56,8 +56,9 @@ try {
     echo ($execute ? 'Seeding' : 'Dry run for')." tracezilla team [{$configuration->teamSlug}]\n\n";
 
     $ownCompany = (string) getenv('TRACEZILLA_OWN_COMPANY');
-    $client = new Client($configuration, TokenProvider::fromConfiguration($configuration));
-    $seeder = new Seeder(new TracezillaSeedGateway($client), $ownCompany !== '' ? $ownCompany : null);
+    $tokens = TokenProvider::fromConfiguration($configuration);
+    $client = new Client($configuration, $tokens);
+    $seeder = new Seeder(new TracezillaSeedGateway($client), $ownCompany !== '' ? $ownCompany : null, $tokens->userId());
     $result = $seeder->run($definition, $execute);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Seed failed: '.$exception->getMessage()."\n");

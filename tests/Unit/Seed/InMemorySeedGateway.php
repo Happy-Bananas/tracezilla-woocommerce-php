@@ -24,6 +24,9 @@ final class InMemorySeedGateway implements SeedGateway
     /** @var list<string> */
     public array $writes = [];
 
+    /** @var array<string, array<string, mixed>> */
+    public array $partnerPayloads = [];
+
     /** @var array<string, string> SKU codes or partner refs whose creation fails. */
     public array $failures = [];
 
@@ -53,6 +56,7 @@ final class InMemorySeedGateway implements SeedGateway
     {
         $this->failIfConfigured($payload['ref']);
         $this->writes[] = "partner {$payload['ref']}";
+        $this->partnerPayloads[$payload['ref']] = $payload;
         $id = 'partner-'.$this->nextId++;
         $this->partners[$payload['ref']] = ['id' => $id, 'locations' => []];
 

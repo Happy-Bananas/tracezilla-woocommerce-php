@@ -122,6 +122,17 @@ final class SeederTest extends TestCase
         self::assertStringContainsString('TZ-UNKNOWN', $order['detail']);
     }
 
+    public function test_new_partners_are_owned_by_the_seeding_user_unless_specified(): void
+    {
+        $data = $this->data();
+        $data['partners'][] = ['ref' => 'TZ-OWNED', 'name' => 'Owned', 'country' => 'DK', 'owned_by_id' => 99];
+
+        $this->seeder()->run(SeedDefinition::fromArray($data), execute: true);
+
+        self::assertSame(2728, $this->gateway->partnerPayloads['TZ-SUPPLIER']['owned_by_id']);
+        self::assertSame(99, $this->gateway->partnerPayloads['TZ-OWNED']['owned_by_id']);
+    }
+
     public function test_own_company_requires_a_configured_name(): void
     {
         $this->expectException(RuntimeException::class);
@@ -145,7 +156,7 @@ final class SeederTest extends TestCase
 
     private function seeder(): Seeder
     {
-        return new Seeder($this->gateway, 'Own Company', new DateTimeImmutable('2026-10-28'));
+        return new Seeder($this->gateway, 'Own Company', 2728, new DateTimeImmutable('2026-10-28'));
     }
 
     private function definition(): SeedDefinition

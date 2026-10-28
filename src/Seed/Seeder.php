@@ -20,6 +20,7 @@ final readonly class Seeder
     public function __construct(
         private SeedGateway $gateway,
         private ?string $ownCompanyName = null,
+        private ?int $ownerId = null,
         private DateTimeImmutable $today = new DateTimeImmutable('today'),
     ) {
     }
@@ -69,6 +70,10 @@ final readonly class Seeder
             $result->add('partner', $ref, SeedResult::WOULD_CREATE, (string) $partner['name']);
         } else {
             try {
+                // Order import needs an owner; default to the user running the seed.
+                if ($this->ownerId !== null) {
+                    $partner += ['owned_by_id' => $this->ownerId];
+                }
                 $partners[$ref] = ['id' => $this->gateway->createPartner($partner), 'locations' => []];
                 $result->add('partner', $ref, SeedResult::CREATED, (string) $partner['name']);
             } catch (Throwable $exception) {
