@@ -1,7 +1,8 @@
-# tracezilla development data for the WooCommerce sandbox.
+# tracezilla development data. Seeds tracezilla only; the matching WooCommerce
+# products come from tracezilla-woocommerce-sandbox.
 #
 # Apply it with:
-#   docker compose run --rm php php bin/seed-tracezilla seeds/woocommerce-sandbox.yaml
+#   docker compose run --rm php php bin/seed-tracezilla seeds/tracezilla.yaml
 #
 # Field names below the identity keys are passed to the tracezilla API
 # unchanged, so any field from https://app.tracezilla.com/api/documentation
