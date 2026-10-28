@@ -15,7 +15,7 @@ final class SeedDefinitionTest extends TestCase
         $definition = SeedDefinition::fromFile(dirname(__DIR__, 3).'/seeds/woocommerce-sandbox.yaml');
 
         self::assertCount(3, $definition->partners);
-        self::assertContains('TZ-SIMPLE-001', array_column($definition->skus, 'sku_code'));
+        self::assertContains('TZ-FRUIT-001', array_column($definition->skus, 'sku_code'));
         self::assertSame('TZ-STOCK-001', $definition->purchaseOrders[0]['ext_ref']);
     }
 

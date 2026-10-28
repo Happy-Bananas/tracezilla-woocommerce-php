@@ -60,87 +60,89 @@ partners:
         city: Aarhus C
         country: DK
 
-# Matched SKUs cover every product used by the sandbox orders. TZ-CATALOG-003
-# and the rest of the WooCommerce catalog are deliberately missing, so the
+# Matched SKUs cover every product used by the sandbox orders. The rest of the
+# WooCommerce catalog (e.g. TZ-FRUIT-004) is deliberately missing, so the
 # "create missing SKUs" workflow has something to do.
 skus:
-  - sku_code: TZ-SIMPLE-001
-    global_name: Tracezilla Test Banana
-    category: finished_good
-    unit_of_measure: pcs
-    lot_unit: pcs
-    default_uom_conversion: 1
-    weight_factor_net: 0.2
-    weight_factor_gross: 0.25
-
-  - sku_code: TZ-SALE-001
-    global_name: Tracezilla Test Pineapple
+  - sku_code: TZ-FRUIT-001
+    global_name: Fairtrade Bananas 1 kg
     category: finished_good
     unit_of_measure: pcs
     lot_unit: pcs
     default_uom_conversion: 1
     weight_factor_net: 1
-    weight_factor_gross: 1.1
+    weight_factor_gross: 1.05
 
-  - sku_code: TZ-OUT-OF-STOCK
-    global_name: Tracezilla Test Mango
+  - sku_code: TZ-FRUIT-002
+    global_name: Golden Pineapple
     category: finished_good
     unit_of_measure: pcs
     lot_unit: pcs
     default_uom_conversion: 1
-    weight_factor_net: 0.3
-    weight_factor_gross: 0.35
+    weight_factor_net: 1.2
+    weight_factor_gross: 1.25
 
-  - sku_code: TZ-TSHIRT-S
-    global_name: Tracezilla Test T-shirt Small
+  - sku_code: TZ-FRUIT-003
+    global_name: Ripe Mango
     category: finished_good
     unit_of_measure: pcs
     lot_unit: pcs
     default_uom_conversion: 1
-    weight_factor_net: 0.15
-    weight_factor_gross: 0.2
+    weight_factor_net: 0.4
+    weight_factor_gross: 0.42
 
-  - sku_code: TZ-TSHIRT-M
-    global_name: Tracezilla Test T-shirt Medium
+  # Variations of the WooCommerce product TZ-COFFEE-001.
+  - sku_code: TZ-COFFEE-001-250G
+    global_name: House Blend Coffee Beans 250 g
     category: finished_good
     unit_of_measure: pcs
     lot_unit: pcs
     default_uom_conversion: 1
-    weight_factor_net: 0.17
-    weight_factor_gross: 0.22
+    weight_factor_net: 0.25
+    weight_factor_gross: 0.28
 
-  - sku_code: TZ-CATALOG-001
-    global_name: Tracezilla Catalog Product 001
+  - sku_code: TZ-COFFEE-001-1KG
+    global_name: House Blend Coffee Beans 1 kg
+    category: finished_good
+    unit_of_measure: pcs
+    lot_unit: pcs
+    default_uom_conversion: 1
+    weight_factor_net: 1
+    weight_factor_gross: 1.05
+
+  - sku_code: TZ-DAIRY-001
+    global_name: Aged Gouda 500 g
     category: finished_good
     unit_of_measure: pcs
     lot_unit: pcs
     default_uom_conversion: 1
     weight_factor_net: 0.5
-    weight_factor_gross: 0.55
+    weight_factor_gross: 0.52
 
-  # Sold per piece, stored in boxes of 12. Exposes unit-conversion handling.
-  - sku_code: TZ-CATALOG-002
-    global_name: Tracezilla Catalog Product 002
+  # Sold per bottle, stored in crates of 12. Exposes unit-conversion handling.
+  - sku_code: TZ-DAIRY-002
+    global_name: Organic Whole Milk 1 L
     category: finished_good
     unit_of_measure: pcs
     lot_unit: colli
     default_uom_conversion: 12
-    weight_factor_net: 0.5
-    weight_factor_gross: 0.55
+    weight_factor_net: 1.03
+    weight_factor_gross: 1.06
 
-  # Exists only in tracezilla, for catalog difference reports.
-  - sku_code: TZ-TRACEZILLA-ONLY-001
-    global_name: Tracezilla Only Product
-    category: finished_good
-    unit_of_measure: pcs
-    lot_unit: pcs
-    default_uom_conversion: 1
+  # Exists only in tracezilla, for catalog difference reports. A raw material
+  # measured in kg and stored in 25 kg sacks.
+  - sku_code: TZ-RAW-001
+    global_name: Raw Cocoa Beans 25 kg
+    category: raw_material
+    unit_of_measure: kg
+    lot_unit: colli
+    default_uom_conversion: 25
     weight_factor_net: 1
-    weight_factor_gross: 1
+    weight_factor_gross: 1.02
 
 # Received purchase orders put stock into the warehouse. Quantities differ from
 # WooCommerce on purpose, so inventory synchronization has updates to report.
-# TZ-OUT-OF-STOCK is never received and stays at zero.
+# TZ-FRUIT-003 is never received and stays at zero.
 purchase_orders:
   - ext_ref: TZ-STOCK-001
     supplier: { partner: TZ-SUPPLIER, location: TZ-SUPPLIER-HQ }
@@ -149,10 +151,10 @@ purchase_orders:
     exchange_rate: 100
     receive: true
     lines:
-      - { sku_code: TZ-SIMPLE-001, quantity: 80, unit_price: 5, price_per: stock_unit }
-      - { sku_code: TZ-SALE-001, quantity: 50, unit_price: 12, price_per: stock_unit }
-      - { sku_code: TZ-TSHIRT-S, quantity: 10, unit_price: 40, price_per: stock_unit }
-      - { sku_code: TZ-TSHIRT-M, quantity: 15, unit_price: 40, price_per: stock_unit }
-      - { sku_code: TZ-CATALOG-001, quantity: 21, unit_price: 20, price_per: stock_unit }
-      - { sku_code: TZ-CATALOG-002, quantity: 2, unit_price: 240, price_per: lot_unit }
-      - { sku_code: TZ-TRACEZILLA-ONLY-001, quantity: 5, unit_price: 10, price_per: stock_unit }
+      - { sku_code: TZ-FRUIT-001, quantity: 80, unit_price: 5, price_per: stock_unit }
+      - { sku_code: TZ-FRUIT-002, quantity: 50, unit_price: 12, price_per: stock_unit }
+      - { sku_code: TZ-COFFEE-001-250G, quantity: 10, unit_price: 20, price_per: stock_unit }
+      - { sku_code: TZ-COFFEE-001-1KG, quantity: 15, unit_price: 70, price_per: stock_unit }
+      - { sku_code: TZ-DAIRY-001, quantity: 21, unit_price: 20, price_per: stock_unit }
+      - { sku_code: TZ-DAIRY-002, quantity: 2, unit_price: 96, price_per: lot_unit }
+      - { sku_code: TZ-RAW-001, quantity: 4, unit_price: 60, price_per: stock_unit }
