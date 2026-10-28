@@ -20,6 +20,8 @@ $usage = <<<'TEXT'
 
     Creates the partners, locations, SKUs and purchase orders described in the
     seed file in the tracezilla team from .env. Existing records are skipped.
+    Locations under own_company are added to the partner named by
+    TRACEZILLA_OWN_COMPANY.
     Without --execute --confirm nothing is written (dry run).
 
     Default seed file: seeds/woocommerce-sandbox.yaml
@@ -52,7 +54,9 @@ try {
 
     echo ($execute ? 'Seeding' : 'Dry run for')." tracezilla team [{$configuration->teamSlug}]\n\n";
 
-    $result = (new Seeder(new TracezillaSeedGateway(new Client($configuration))))->run($definition, $execute);
+    $ownCompany = (string) getenv('TRACEZILLA_OWN_COMPANY');
+    $seeder = new Seeder(new TracezillaSeedGateway(new Client($configuration)), $ownCompany !== '' ? $ownCompany : null);
+    $result = $seeder->run($definition, $execute);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Seed failed: '.$exception->getMessage()."\n");
     exit(1);

@@ -27,22 +27,26 @@ final readonly class TracezillaSeedGateway implements SeedGateway
                 throw new RuntimeException("Several tracezilla partners have ref [{$ref}].");
             }
 
-            $locations = [];
-            foreach ($partner['locations'] ?? [] as $location) {
-                $locationRef = trim((string) ($location['ref'] ?? ''));
-                if ($locationRef === '') {
-                    continue;
-                }
-                if (isset($locations[$locationRef])) {
-                    throw new RuntimeException("tracezilla partner [{$ref}] has several locations with ref [{$locationRef}].");
-                }
-                $locations[$locationRef] = (string) $location['id'];
-            }
-
-            $partners[$ref] = ['id' => (string) $partner['id'], 'locations' => $locations];
+            $partners[$ref] = ['id' => (string) $partner['id'], 'locations' => $this->locationsByRef($partner, $ref)];
         }
 
         return $partners;
+    }
+
+    public function ownCompany(string $name): array
+    {
+        $matches = array_values(array_filter(
+            $this->client->getAll('/partners', ['keyword' => ['ct' => $name], 'include' => 'locations', 'perPage' => 250]),
+            static fn (array $partner): bool => strcasecmp(trim((string) ($partner['name'] ?? '')), trim($name)) === 0,
+        ));
+
+        if (count($matches) !== 1) {
+            throw new RuntimeException(count($matches) === 0
+                ? "No tracezilla partner is named [{$name}]. Check TRACEZILLA_OWN_COMPANY."
+                : "Several tracezilla partners are named [{$name}]. Rename one of them.");
+        }
+
+        return ['id' => (string) $matches[0]['id'], 'locations' => $this->locationsByRef($matches[0], $name)];
     }
 
     public function skuCodes(): array
@@ -87,6 +91,24 @@ final readonly class TracezillaSeedGateway implements SeedGateway
     public function createPurchaseOrder(array $payload): void
     {
         $this->client->put('/orders/purchase', $payload);
+    }
+
+    /** @return array<string, string> */
+    private function locationsByRef(array $partner, string $partnerLabel): array
+    {
+        $locations = [];
+        foreach ($partner['locations'] ?? [] as $location) {
+            $ref = trim((string) ($location['ref'] ?? ''));
+            if ($ref === '') {
+                continue;
+            }
+            if (isset($locations[$ref])) {
+                throw new RuntimeException("tracezilla partner [{$partnerLabel}] has several locations with ref [{$ref}].");
+            }
+            $locations[$ref] = (string) $location['id'];
+        }
+
+        return $locations;
     }
 
     private function createdId(array $response, string $type): string

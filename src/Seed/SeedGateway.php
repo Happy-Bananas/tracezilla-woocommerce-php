@@ -13,6 +13,13 @@ interface SeedGateway
      */
     public function partnersByRef(): array;
 
+    /**
+     * The partner representing the team's own company, found by its exact name.
+     *
+     * @return array{id: string, locations: array<string, string>}
+     */
+    public function ownCompany(string $name): array;
+
     /** @return array<string, true> */
     public function skuCodes(): array;
 

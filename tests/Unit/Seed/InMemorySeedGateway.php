@@ -12,6 +12,9 @@ final class InMemorySeedGateway implements SeedGateway
     /** @var array<string, array{id: string, locations: array<string, string>}> */
     public array $partners = [];
 
+    /** @var array<string, array{id: string, locations: array<string, string>}> Keyed by name. */
+    public array $companies = ['Own Company' => ['id' => 'own', 'locations' => []]];
+
     /** @var array<string, true> */
     public array $skus = [];
 
@@ -29,6 +32,11 @@ final class InMemorySeedGateway implements SeedGateway
     public function partnersByRef(): array
     {
         return $this->partners;
+    }
+
+    public function ownCompany(string $name): array
+    {
+        return $this->companies[$name] ?? throw new RuntimeException("No tracezilla partner is named [{$name}].");
     }
 
     public function skuCodes(): array
@@ -58,6 +66,11 @@ final class InMemorySeedGateway implements SeedGateway
         foreach ($this->partners as $ref => $partner) {
             if ($partner['id'] === $partnerId) {
                 $this->partners[$ref]['locations'][$payload['ref']] = $id;
+            }
+        }
+        foreach ($this->companies as $name => $company) {
+            if ($company['id'] === $partnerId) {
+                $this->companies[$name]['locations'][$payload['ref']] = $id;
             }
         }
 

@@ -15,12 +15,17 @@ final readonly class SeedDefinition
 {
     public const VERSION = 1;
 
+    /** Partner reference for the team's own company, configured outside the seed file. */
+    public const OWN_COMPANY = 'own_company';
+
     /**
+     * @param list<array<string, mixed>> $ownCompanyLocations
      * @param list<array<string, mixed>> $partners
      * @param list<array<string, mixed>> $skus
      * @param list<array<string, mixed>> $purchaseOrders
      */
     public function __construct(
+        public array $ownCompanyLocations,
         public array $partners,
         public array $skus,
         public array $purchaseOrders,
@@ -48,9 +53,17 @@ final readonly class SeedDefinition
         if (($data['version'] ?? null) !== self::VERSION) {
             $errors[] = 'version must be '.self::VERSION.'.';
         }
-        foreach (array_diff(array_keys($data), ['version', 'partners', 'skus', 'purchase_orders']) as $unknown) {
+        foreach (array_diff(array_keys($data), ['version', 'own_company', 'partners', 'skus', 'purchase_orders']) as $unknown) {
             $errors[] = "Unknown top-level key [{$unknown}].";
         }
+
+        $ownCompany = $data['own_company'] ?? [];
+        if (! is_array($ownCompany) || array_diff(array_keys($ownCompany), ['locations']) !== []) {
+            $errors[] = 'own_company may only contain locations.';
+            $ownCompany = [];
+        }
+        $ownCompanyLocations = self::list($ownCompany, 'locations', $errors, 'own_company');
+        self::validateLocations($ownCompanyLocations, 'own_company', $errors);
 
         $partners = self::list($data, 'partners', $errors);
         $skus = self::list($data, 'skus', $errors);
@@ -61,13 +74,10 @@ final readonly class SeedDefinition
             $at = "partners[{$index}]";
             self::requireFields($partner, ['ref', 'name', 'country'], $at, $errors);
             self::unique($partnerRefs, $partner['ref'] ?? null, $at, $errors);
-
-            $locationRefs = [];
-            foreach (self::list($partner, 'locations', $errors, $at) as $locationIndex => $location) {
-                $locationAt = "{$at}.locations[{$locationIndex}]";
-                self::requireFields($location, ['ref', 'name', 'country'], $locationAt, $errors);
-                self::unique($locationRefs, $location['ref'] ?? null, $locationAt, $errors);
+            if (($partner['ref'] ?? null) === self::OWN_COMPANY) {
+                $errors[] = "{$at}.ref [".self::OWN_COMPANY.'] is reserved for the own company.';
             }
+            self::validateLocations(self::list($partner, 'locations', $errors, $at), $at, $errors);
         }
 
         $skuCodes = [];
@@ -99,7 +109,31 @@ final readonly class SeedDefinition
             throw new InvalidArgumentException("Invalid seed definition:\n- ".implode("\n- ", $errors));
         }
 
-        return new self($partners, $skus, $purchaseOrders);
+        return new self($ownCompanyLocations, $partners, $skus, $purchaseOrders);
+    }
+
+    public function usesOwnCompany(): bool
+    {
+        if ($this->ownCompanyLocations !== []) {
+            return true;
+        }
+        foreach ($this->purchaseOrders as $order) {
+            if ($order['supplier']['partner'] === self::OWN_COMPANY || $order['deliver_to']['partner'] === self::OWN_COMPANY) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function validateLocations(array $locations, string $at, array &$errors): void
+    {
+        $refs = [];
+        foreach ($locations as $index => $location) {
+            $locationAt = "{$at}.locations[{$index}]";
+            self::requireFields($location, ['ref', 'name', 'country'], $locationAt, $errors);
+            self::unique($refs, $location['ref'] ?? null, $locationAt, $errors);
+        }
     }
 
     /** @return list<array<string, mixed>> */

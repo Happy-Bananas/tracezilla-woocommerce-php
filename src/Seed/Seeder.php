@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tracezilla\WooCommerce\Seed;
 
 use DateTimeImmutable;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -18,6 +19,7 @@ final readonly class Seeder
 {
     public function __construct(
         private SeedGateway $gateway,
+        private ?string $ownCompanyName = null,
         private DateTimeImmutable $today = new DateTimeImmutable('today'),
     ) {
     }
@@ -29,6 +31,14 @@ final readonly class Seeder
         // ref => id, or null when the record is only planned in a dry run.
         /** @var array<string, array{id: ?string, locations: array<string, ?string>}> $partners */
         $partners = $this->gateway->partnersByRef();
+
+        if ($definition->usesOwnCompany()) {
+            if ($this->ownCompanyName === null || trim($this->ownCompanyName) === '') {
+                throw new RuntimeException('The seed file uses own_company. Set TRACEZILLA_OWN_COMPANY to the name of your company in tracezilla.');
+            }
+            $partners[SeedDefinition::OWN_COMPANY] = $this->gateway->ownCompany($this->ownCompanyName);
+            $this->seedLocations(SeedDefinition::OWN_COMPANY, $definition->ownCompanyLocations, $partners, $execute, $result);
+        }
 
         foreach ($definition->partners as $partner) {
             $this->seedPartner($partner, $partners, $execute, $result);
@@ -71,6 +81,11 @@ final readonly class Seeder
             }
         }
 
+        $this->seedLocations($ref, $locations, $partners, $execute, $result);
+    }
+
+    private function seedLocations(string $ref, array $locations, array &$partners, bool $execute, SeedResult $result): void
+    {
         foreach ($locations as $location) {
             $key = "{$ref}/{$location['ref']}";
             $partnerId = $partners[$ref]['id'];

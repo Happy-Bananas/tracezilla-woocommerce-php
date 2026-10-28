@@ -6,12 +6,25 @@
 # Field names below the identity keys are passed to the tracezilla API
 # unchanged, so any field from https://app.tracezilla.com/api/documentation
 # can be added. Records are identified by:
-#   partners and locations  -> ref
+#   partners and locations  -> ref (own_company -> TRACEZILLA_OWN_COMPANY)
 #   skus                    -> sku_code
 #   purchase_orders         -> ext_ref
 # Existing records are never updated; re-running the seed skips them.
 
 version: 1
+
+# The team's own company already exists in tracezilla. Its name differs per
+# developer, so it is set with TRACEZILLA_OWN_COMPANY in .env. The seed only
+# adds missing locations to it and never changes the company itself.
+own_company:
+  locations:
+    - ref: TZ-WAREHOUSE-MAIN
+      name: TZ Main warehouse
+      is_warehouse: true
+      address: Testvej 3
+      zip: '8000'
+      city: Aarhus C
+      country: DK
 
 partners:
   - ref: TZ-SUPPLIER
@@ -41,21 +54,6 @@ partners:
         is_primary: true
         is_invoice_to: true
         address: Testvej 2
-        zip: '8000'
-        city: Aarhus C
-        country: DK
-
-  - ref: TZ-WAREHOUSE
-    name: TZ Warehouse
-    type: organization
-    country: DK
-    currency: DKK
-    locations:
-      - ref: TZ-WAREHOUSE-MAIN
-        name: TZ Warehouse main
-        is_primary: true
-        is_warehouse: true
-        address: Testvej 3
         zip: '8000'
         city: Aarhus C
         country: DK
@@ -146,7 +144,7 @@ skus:
 purchase_orders:
   - ext_ref: TZ-STOCK-001
     supplier: { partner: TZ-SUPPLIER, location: TZ-SUPPLIER-HQ }
-    deliver_to: { partner: TZ-WAREHOUSE, location: TZ-WAREHOUSE-MAIN }
+    deliver_to: { partner: own_company, location: TZ-WAREHOUSE-MAIN }
     currency: DKK
     exchange_rate: 100
     receive: true

@@ -14,7 +14,8 @@ final class SeedDefinitionTest extends TestCase
     {
         $definition = SeedDefinition::fromFile(dirname(__DIR__, 3).'/seeds/woocommerce-sandbox.yaml');
 
-        self::assertCount(3, $definition->partners);
+        self::assertCount(2, $definition->partners);
+        self::assertTrue($definition->usesOwnCompany());
         self::assertContains('TZ-FRUIT-001', array_column($definition->skus, 'sku_code'));
         self::assertSame('TZ-STOCK-001', $definition->purchaseOrders[0]['ext_ref']);
     }
@@ -25,7 +26,8 @@ final class SeedDefinitionTest extends TestCase
             SeedDefinition::fromArray([
                 'version' => 2,
                 'partner' => [],
-                'partners' => [['ref' => 'TZ-A', 'country' => 'DK'], ['ref' => 'TZ-A', 'name' => 'A', 'country' => 'DK']],
+                'own_company' => ['name' => 'Mine'],
+                'partners' => [['ref' => 'TZ-A', 'country' => 'DK'], ['ref' => 'TZ-A', 'name' => 'A', 'country' => 'DK'], ['ref' => 'own_company', 'name' => 'B', 'country' => 'DK']],
                 'skus' => [['sku_code' => 'TZ-1']],
                 'purchase_orders' => [[
                     'ext_ref' => 'TZ-PO',
@@ -47,6 +49,8 @@ final class SeedDefinitionTest extends TestCase
             'Unknown top-level key [partner].',
             'partners[0].name is required.',
             'partners[1] repeats [TZ-A].',
+            'own_company may only contain locations.',
+            'partners[2].ref [own_company] is reserved for the own company.',
             'skus[0].unit_of_measure is required.',
             'purchase_orders[0].supplier must be { partner: <ref>, location: <ref> }.',
             'purchase_orders[0].receive must be true or false.',
