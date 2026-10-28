@@ -18,6 +18,10 @@
 #     deliveries, so supplier pickup locations need it; customer addresses don't.
 #   - New partners are owned by the user who runs the seed unless
 #     owned_by_id is set.
+#   - On create, tracezilla derives lot_unit and default_uom_conversion from
+#     unit_of_measure (pcs -> pcs/1, kg -> g/0.001). The seed then updates the
+#     SKU with lock_uom_conversion: false to store the requested units. Units
+#     cannot be changed once an SKU has lots.
 
 version: 1
 

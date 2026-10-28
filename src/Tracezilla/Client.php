@@ -44,6 +44,12 @@ final class Client
         return $this->send('PUT', $path, ['json' => $payload]);
     }
 
+    /** @return array<string, mixed> */
+    public function delete(string $path): array
+    {
+        return $this->send('DELETE', $path, []);
+    }
+
     /**
      * Follow links.next_page until the last page.
      *
@@ -103,7 +109,12 @@ final class Client
             );
         }
 
-        return json_decode((string) $response->getBody(), true, flags: JSON_THROW_ON_ERROR);
+        $body = (string) $response->getBody();
+
+        $decoded = $body === '' ? [] : json_decode($body, true, flags: JSON_THROW_ON_ERROR);
+
+        // Some endpoints, such as DELETE, answer with a bare value.
+        return is_array($decoded) ? $decoded : ['data' => $decoded];
     }
 
     private function request(string $method, string $path, array $options, string $token): ResponseInterface

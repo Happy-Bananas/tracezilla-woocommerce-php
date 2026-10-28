@@ -83,14 +83,45 @@ final readonly class TracezillaSeedGateway implements SeedGateway
         return $this->createdId($this->client->post("/partners/{$partnerId}/locations", $payload), 'location');
     }
 
+    /** Unit fields that tracezilla may replace when it creates an SKU. */
+    private const UNIT_FIELDS = ['unit_of_measure', 'lot_unit', 'default_uom_conversion'];
+
     public function createSku(array $payload): void
     {
-        $this->client->post('/skus', $payload);
+        $created = $this->client->post('/skus', $payload)['data'] ?? [];
+        if ($this->unitsMatch($payload, $created)) {
+            return;
+        }
+
+        // On create, tracezilla locks the unit conversion and derives the lot
+        // unit from the unit of measure (pcs -> pcs, kg -> g). Updating the SKU
+        // with the lock removed stores the requested units.
+        $id = $this->createdId(['data' => $created], 'SKU');
+        $updated = $this->client->put("/skus/{$id}", ['lock_uom_conversion' => false] + $payload)['data'] ?? [];
+        if (! $this->unitsMatch($payload, $updated)) {
+            throw new RuntimeException(sprintf(
+                'tracezilla stored units %s instead of %s for SKU [%s].',
+                json_encode(array_intersect_key($updated, array_flip(self::UNIT_FIELDS))),
+                json_encode(array_intersect_key($payload, array_flip(self::UNIT_FIELDS))),
+                $payload['sku_code'],
+            ));
+        }
     }
 
     public function createPurchaseOrder(array $payload): void
     {
         $this->client->put('/orders/purchase', $payload);
+    }
+
+    private function unitsMatch(array $requested, array $stored): bool
+    {
+        foreach (self::UNIT_FIELDS as $field) {
+            if (array_key_exists($field, $requested) && (string) $requested[$field] !== (string) ($stored[$field] ?? null)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @return array<string, string> */
