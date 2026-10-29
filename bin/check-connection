@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Tracezilla\WooCommerce\Configuration;
+use Tracezilla\WooCommerce\Connection\ConnectionChecker;
+use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
+use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
+use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
+use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
+
+$project = dirname(__DIR__);
+require $project.'/vendor/autoload.php';
+Dotenv::createImmutable($project)->safeLoad();
+
+$options = getopt('', ['json']);
+
+// Configuration is loaded inside each check, so a missing setting is reported
+// for that system without stopping the other check.
+$result = (new ConnectionChecker(
+    static fn (): array => (new WooCommerceClient(Configuration::fromEnvironment()))->systemStatus(),
+    static function () use ($project): array {
+        $configuration = TracezillaConfiguration::fromEnvironment($project);
+
+        return (new TracezillaClient($configuration, TokenProvider::fromConfiguration($configuration)))
+            ->get('/skus', ['perPage' => 1]);
+    },
+    (string) getenv('TRACEZILLA_TEAM_SLUG'),
+))->check();
+
+if (array_key_exists('json', $options)) {
+    echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
+    exit($result['status'] === 'ok' ? 0 : 1);
+}
+
+echo $result['status'] === 'ok' ? "Connection check passed.\n" : "Connection check failed.\n";
+
+$woocommerce = $result['woocommerce'];
+echo 'WooCommerce: '.($woocommerce['connected']
+    ? 'connected to '.($woocommerce['store_url'] ?? 'unknown store').' (WooCommerce '.($woocommerce['version'] ?? 'unknown').')'
+    : 'FAILED - '.$woocommerce['error'])."\n";
+
+$tracezilla = $result['tracezilla'];
+echo 'tracezilla:  '.($tracezilla['connected']
+    ? "connected to team {$tracezilla['team']}"
+    : 'FAILED - '.$tracezilla['error'])."\n";
+
+exit($result['status'] === 'ok' ? 0 : 1);
