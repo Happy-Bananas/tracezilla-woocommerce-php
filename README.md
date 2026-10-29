@@ -30,12 +30,6 @@ Install the pinned PHP dependencies:
 docker compose run --rm php composer install
 ```
 
-Validate the WooCommerce connection:
-
-```bash
-docker compose run --rm php php bin/test-connection
-```
-
 ## Authenticate with tracezilla
 
 Create an OAuth client in tracezilla (**Settings → My account → API Tokens**)
@@ -49,6 +43,19 @@ docker compose run --rm php php bin/tracezilla-login
 The password is not stored. Tokens are saved in `var/tracezilla-token.json`
 and renewed automatically 30 days before they expire, so scheduled commands
 keep working. Keep the `var/` directory between runs and out of Git.
+
+## Check the connections
+
+Check the WooCommerce and tracezilla credentials with one read-only request
+each:
+
+```bash
+docker compose run --rm php php bin/check-connection
+docker compose run --rm php php bin/check-connection --json
+```
+
+Both systems are always checked, so a problem with one does not hide the state
+of the other. The command exits with `0` only when both connections work.
 
 ## Seed tracezilla development data
 
