@@ -15,7 +15,7 @@ use RuntimeException;
  * Supplies a valid tracezilla access token using the OAuth Resource Owner
  * Password Credentials grant.
  *
- * The username and password are used once, by bin/tracezilla-login. After
+ * The username and password are used once, by the tracezilla:login command. After
  * that the stored refresh token renews the access token well before it
  * expires, so a regularly running integration never needs the password again.
  */
@@ -130,7 +130,7 @@ final readonly class TokenProvider
     private function stored(): OAuthTokens
     {
         return $this->store->load()
-            ?? throw new RuntimeException('No tracezilla token is stored. Run bin/tracezilla-login first.');
+            ?? throw new RuntimeException('No tracezilla token is stored. Run bin/bifrost-connect tracezilla:login first.');
     }
 
     private function requestTokens(array $grant): OAuthTokens
@@ -144,7 +144,7 @@ final readonly class TokenProvider
             $status = $exception->getResponse()?->getStatusCode() ?? 0;
             $body = $exception->getResponse()?->getBody()->__toString() ?? '';
             $hint = $grant['grant_type'] === 'refresh_token'
-                ? ' The refresh token was rejected; run bin/tracezilla-login again.'
+                ? ' The refresh token was rejected; run bin/bifrost-connect tracezilla:login again.'
                 : ' Check TRACEZILLA_CLIENT_ID, TRACEZILLA_CLIENT_SECRET, and the username and password.';
 
             throw new RuntimeException("tracezilla token request failed with HTTP {$status}: ".mb_substr($body, 0, 500).$hint, previous: $exception);

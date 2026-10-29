@@ -17,7 +17,7 @@ require dirname(__DIR__).'/vendor/autoload.php';
 Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
 
 $usage = <<<'TEXT'
-    Usage: php bin/seed-tracezilla [<seed-file>] [--execute --confirm]
+    Usage: php bin/bifrost-connect tracezilla:seed [<seed-file>] [--execute --confirm]
 
     Creates the partners, locations, SKUs and purchase orders described in the
     seed file in the tracezilla team from .env. Existing records are skipped.

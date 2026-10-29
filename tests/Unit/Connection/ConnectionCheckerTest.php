@@ -40,12 +40,12 @@ final class ConnectionCheckerTest extends TestCase
     {
         $result = $this->checker(
             static fn (): array => ['environment' => ['site_url' => 'http://localhost:8080', 'version' => '11.2.1']],
-            static fn (): array => throw new RuntimeException('No tracezilla token is stored. Run bin/tracezilla-login first.'),
+            static fn (): array => throw new RuntimeException('No tracezilla token is stored. Run bin/bifrost-connect tracezilla:login first.'),
         )->check();
 
         self::assertSame('failed', $result['status']);
         self::assertTrue($result['woocommerce']['connected']);
-        self::assertStringContainsString('bin/tracezilla-login', $result['tracezilla']['error']);
+        self::assertStringContainsString('bin/bifrost-connect tracezilla:login', $result['tracezilla']['error']);
     }
 
     public function test_unexpected_responses_count_as_failures(): void

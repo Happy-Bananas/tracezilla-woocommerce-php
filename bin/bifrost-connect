@@ -1,0 +1,70 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Tracezilla\WooCommerce\Lock\FileIntegrationLock;
+use Tracezilla\WooCommerce\RuntimeDirectory;
+
+$project = dirname(__DIR__);
+require $project.'/vendor/autoload.php';
+Dotenv::createImmutable($project)->safeLoad();
+
+$commands = [
+    'connection:check' => 'check-connection',
+    'tracezilla:login' => 'tracezilla-login',
+    'tracezilla:seed' => 'seed-tracezilla',
+];
+
+// Every other command takes the integration lock, so scheduled runs never
+// overlap. A run that finds the lock taken is skipped, not queued.
+$unlockedCommands = ['connection:check', 'tracezilla:login'];
+
+$command = $argv[1] ?? 'help';
+
+if (in_array($command, ['help', '--help', '-h', 'list'], true)) {
+    echo "BifrostConnect\n\n";
+    echo "Usage:\n";
+    echo "  php bin/bifrost-connect <command> [options]\n\n";
+    echo "Available commands:\n";
+    foreach (array_keys($commands) as $name) {
+        echo "  {$name}\n";
+    }
+    echo "\nRun a command with its options, for example:\n";
+    echo "  php bin/bifrost-connect tracezilla:seed --help\n";
+    exit(0);
+}
+
+if (! isset($commands[$command])) {
+    fwrite(STDERR, "Unknown command: {$command}\n");
+    fwrite(STDERR, "Run 'php bin/bifrost-connect help' to list commands.\n");
+    exit(2);
+}
+
+$script = __DIR__.DIRECTORY_SEPARATOR.$commands[$command];
+$arguments = array_slice($argv, 2);
+$parts = array_merge([PHP_BINARY, $script], $arguments);
+$shellCommand = implode(' ', array_map('escapeshellarg', $parts));
+
+$lock = null;
+if (! in_array($command, $unlockedCommands, true)) {
+    $locks = new FileIntegrationLock(RuntimeDirectory::resolve($project));
+    $lock = $locks->acquire('integration', ['command' => $command]);
+    if ($lock === null) {
+        $metadata = $locks->metadata('integration');
+        fwrite(STDERR, "Another integration command is already running.\n");
+        if (is_string($metadata['command'] ?? null)) {
+            fwrite(STDERR, "Command: {$metadata['command']}\n");
+        }
+        if (is_string($metadata['acquired_at'] ?? null)) {
+            fwrite(STDERR, "Started: {$metadata['acquired_at']}\n");
+        }
+        fwrite(STDERR, "This invocation was skipped safely; the next scheduled run can retry.\n");
+        exit(75);
+    }
+}
+
+passthru($shellCommand, $exitCode);
+$lock?->release();
+exit($exitCode);
