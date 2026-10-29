@@ -1,0 +1,25 @@
+#!/bin/sh
+# Check the WooCommerce and tracezilla connections with Docker.
+# Builds the container and installs the PHP packages when needed, then runs
+# bin/check-connection. Arguments such as --json are passed through.
+
+set -eu
+
+cd "$(dirname "$0")"
+
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+    echo "Docker with Docker Compose is required." >&2
+    exit 2
+fi
+
+if [ ! -f .env ]; then
+    echo "No .env file found. Create it with: cp .env.example .env" >&2
+    exit 2
+fi
+
+if [ ! -f vendor/autoload.php ]; then
+    echo "Installing the PHP packages (first run only) ..." >&2
+    docker compose run --rm php composer install --no-interaction --quiet
+fi
+
+exec docker compose run --rm php php bin/check-connection "$@"

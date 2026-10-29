@@ -47,12 +47,17 @@ keep working. Keep the `var/` directory between runs and out of Git.
 ## Check the connections
 
 Check the WooCommerce and tracezilla credentials with one read-only request
-each:
+each. Nothing else works until this passes:
 
 ```bash
-docker compose run --rm php php bin/check-connection
-docker compose run --rm php php bin/check-connection --json
+./check-connection
+./check-connection --json
 ```
+
+The helper builds the container and installs the PHP packages when needed, then
+runs `bin/check-connection`. Without Docker, run `php bin/check-connection`.
+With the local sandbox, the WooCommerce values in `.env.example` work as they
+are.
 
 Both systems are always checked, so a problem with one does not hide the state
 of the other. The command exits with `0` only when both connections work.
