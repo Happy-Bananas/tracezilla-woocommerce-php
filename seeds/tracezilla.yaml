@@ -2,7 +2,7 @@
 # products come from tracezilla-woocommerce-sandbox.
 #
 # Apply it with:
-#   docker compose run --rm php php bin/seed-tracezilla seeds/tracezilla.yaml
+#   docker compose run --rm php php bin/bifrost-connect tracezilla:seed seeds/tracezilla.yaml
 #
 # Field names below the identity keys are passed to the tracezilla API
 # unchanged, so any field from https://app.tracezilla.com/api/documentation

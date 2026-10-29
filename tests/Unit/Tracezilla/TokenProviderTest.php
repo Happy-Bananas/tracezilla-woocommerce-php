@@ -91,7 +91,7 @@ final class TokenProviderTest extends TestCase
         $this->responses->append(new Response(401, [], '{"error":"invalid_grant"}'));
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('run bin/tracezilla-login again');
+        $this->expectExceptionMessage('run bin/bifrost-connect tracezilla:login again');
 
         $this->provider()->accessToken();
     }
@@ -99,7 +99,7 @@ final class TokenProviderTest extends TestCase
     public function test_it_asks_for_a_login_when_no_token_is_stored(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Run bin/tracezilla-login first');
+        $this->expectExceptionMessage('Run bin/bifrost-connect tracezilla:login first');
 
         $this->provider()->accessToken();
     }

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Check the WooCommerce and tracezilla connections with Docker.
 # Builds the container and installs the PHP packages when needed, then runs
-# bin/check-connection. Arguments such as --json are passed through.
+# bin/bifrost-connect connection:check. Arguments such as --json are passed through.
 
 set -eu
 
@@ -22,4 +22,4 @@ if [ ! -f vendor/autoload.php ]; then
     docker compose run --rm php composer install --no-interaction --quiet
 fi
 
-exec docker compose run --rm php php bin/check-connection "$@"
+exec docker compose run --rm php php bin/bifrost-connect connection:check "$@"

@@ -33,7 +33,7 @@ final readonly class OAuthTokens
     public static function fromArray(array $data): self
     {
         if (! is_string($data['access_token'] ?? null) || ! is_string($data['refresh_token'] ?? null) || ! is_string($data['expires_at'] ?? null)) {
-            throw new RuntimeException('The stored tracezilla token is incomplete. Run bin/tracezilla-login.');
+            throw new RuntimeException('The stored tracezilla token is incomplete. Run bin/bifrost-connect tracezilla:login.');
         }
 
         return new self($data['access_token'], $data['refresh_token'], new DateTimeImmutable($data['expires_at']));
