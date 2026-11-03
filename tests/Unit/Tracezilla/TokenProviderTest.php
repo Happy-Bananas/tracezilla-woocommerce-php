@@ -114,7 +114,7 @@ final class TokenProviderTest extends TestCase
             $this->store,
             'client-id',
             'client-secret',
-            fn (): DateTimeImmutable => $this->now,
+            new FixedClock($this->now),
         );
     }
 

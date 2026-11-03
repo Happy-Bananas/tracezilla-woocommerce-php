@@ -20,6 +20,7 @@ final readonly class TokenStore
         return $this->path;
     }
 
+    /** The stored tokens, or null if nobody has logged in yet. */
     public function load(): ?OAuthTokens
     {
         if (! is_file($this->path)) {
@@ -36,46 +37,43 @@ final readonly class TokenStore
 
     public function save(OAuthTokens $tokens): void
     {
-        $this->ensureDirectory();
-        $temporary = $this->path.'.tmp';
+        $this->createDirectory();
+        $json = json_encode($tokens->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
 
-        if (file_put_contents($temporary, json_encode($tokens->toArray(), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)) === false) {
+        // Write to a temporary file first and then rename it. A rename cannot be
+        // interrupted halfway, so a crash never leaves a half-written token file.
+        $temporary = $this->path.'.tmp';
+        if (file_put_contents($temporary, $json) === false) {
             throw new RuntimeException("Unable to write the tracezilla token file {$this->path}.");
         }
         chmod($temporary, 0600);
-        // Rename is atomic, so a crash never leaves a half-written token file.
         rename($temporary, $this->path);
     }
 
     /**
-     * Run $callback while holding an exclusive lock, so concurrent runs never
-     * use the same refresh token twice.
-     *
-     * @template T
-     * @param callable(): T $callback
-     * @return T
+     * Lock the token file, so concurrent runs never use the same refresh token
+     * twice. Release the lock when done.
      */
-    public function locked(callable $callback): mixed
+    public function lock(): TokenFileLock
     {
-        $this->ensureDirectory();
-        $handle = fopen($this->path.'.lock', 'c');
-        if ($handle === false || ! flock($handle, LOCK_EX)) {
-            throw new RuntimeException("Unable to lock the tracezilla token file {$this->path}.");
-        }
+        $this->createDirectory();
 
-        try {
-            return $callback();
-        } finally {
-            flock($handle, LOCK_UN);
-            fclose($handle);
-        }
+        return TokenFileLock::acquire($this->path.'.lock');
     }
 
-    private function ensureDirectory(): void
+    private function createDirectory(): void
     {
         $directory = dirname($this->path);
-        if (! is_dir($directory) && ! mkdir($directory, 0700, true) && ! is_dir($directory)) {
-            throw new RuntimeException("Unable to create the directory {$directory}.");
+        if (is_dir($directory)) {
+            return;
         }
+        if (mkdir($directory, 0700, true)) {
+            return;
+        }
+        // Another run may have created it at the same moment.
+        if (is_dir($directory)) {
+            return;
+        }
+        throw new RuntimeException("Unable to create the directory {$directory}.");
     }
 }
