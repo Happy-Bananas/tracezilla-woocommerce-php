@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Seed;
 
+/**
+ * What the seed did with each record: created, would create, exists, invalid,
+ * or failed.
+ */
 final class SeedResult
 {
     public const WOULD_CREATE = 'would_create';
@@ -26,16 +30,37 @@ final class SeedResult
         return $this->items;
     }
 
-    /** @return array<string, int> */
+    /**
+     * How many records got each action, for example ['exists' => 14, 'created' => 1].
+     *
+     * @return array<string, int>
+     */
     public function counts(): array
     {
-        return array_count_values(array_column($this->items, 'action'));
+        $counts = [];
+        foreach ($this->items as $item) {
+            $action = $item['action'];
+            if (! isset($counts[$action])) {
+                $counts[$action] = 0;
+            }
+            $counts[$action]++;
+        }
+
+        return $counts;
     }
 
+    /** Whether no record failed and none was invalid. */
     public function isSuccessful(): bool
     {
-        $counts = $this->counts();
+        foreach ($this->items as $item) {
+            if ($item['action'] === self::FAILED) {
+                return false;
+            }
+            if ($item['action'] === self::INVALID) {
+                return false;
+            }
+        }
 
-        return ($counts[self::FAILED] ?? 0) === 0 && ($counts[self::INVALID] ?? 0) === 0;
+        return true;
     }
 }
