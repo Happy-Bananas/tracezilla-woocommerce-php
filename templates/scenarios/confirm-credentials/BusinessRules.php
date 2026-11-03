@@ -18,12 +18,17 @@ final class BusinessRules
      */
     public function apply(array $data): array
     {
-        $environment = $data['woocommerce_status']['environment'] ?? null;
-        if (! is_array($environment) || ! is_string($environment['site_url'] ?? null)) {
+        $environment = $this->environmentFrom($data['woocommerce_status']);
+        if ($environment === null) {
             throw new RuntimeException('WooCommerce credential check returned no store.');
         }
-        if (! is_array($data['tracezilla_skus']['data'] ?? null)) {
+        if (! $this->hasSkuList($data['tracezilla_skus'])) {
             throw new RuntimeException('tracezilla credential check returned no data collection.');
+        }
+
+        $version = null;
+        if (isset($environment['version'])) {
+            $version = $environment['version'];
         }
 
         return [
@@ -31,10 +36,42 @@ final class BusinessRules
             'woocommerce' => [
                 'credentials_valid' => true,
                 'store_url' => $environment['site_url'],
-                'version' => $environment['version'] ?? null,
+                'version' => $version,
             ],
             'tracezilla' => ['credentials_valid' => true],
             'message' => 'Hello! Both API credentials are working.',
         ];
+    }
+
+    /**
+     * The "environment" part of WooCommerce's status, if it names the store.
+     *
+     * @param array<string, mixed> $status
+     * @return array<string, mixed>|null
+     */
+    private function environmentFrom(array $status): ?array
+    {
+        if (! isset($status['environment'])) {
+            return null;
+        }
+        $environment = $status['environment'];
+        if (! is_array($environment)) {
+            return null;
+        }
+        if (! isset($environment['site_url']) || ! is_string($environment['site_url'])) {
+            return null;
+        }
+
+        return $environment;
+    }
+
+    /** @param array<string, mixed> $page */
+    private function hasSkuList(array $page): bool
+    {
+        if (! isset($page['data'])) {
+            return false;
+        }
+
+        return is_array($page['data']);
     }
 }

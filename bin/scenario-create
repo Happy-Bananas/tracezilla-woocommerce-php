@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+// Creates a new scenario in custom/Scenarios/WooCommerce/ from a template.
+
 use Tracezilla\WooCommerce\Scenarios\ScenarioGenerator;
 
 $project = dirname(__DIR__);

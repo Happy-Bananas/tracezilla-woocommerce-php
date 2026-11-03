@@ -7,8 +7,15 @@ namespace Tracezilla\WooCommerce\Seed;
 use RuntimeException;
 use Tracezilla\WooCommerce\Tracezilla\Client;
 
+/**
+ * The seed's access to tracezilla: it looks up existing records and creates
+ * missing ones through the tracezilla API.
+ */
 final readonly class TracezillaSeedGateway implements SeedGateway
 {
+    /** Unit fields that tracezilla may replace when it creates an SKU. */
+    private const UNIT_FIELDS = ['unit_of_measure', 'lot_unit', 'default_uom_conversion'];
+
     public function __construct(private Client $client)
     {
     }
@@ -16,9 +23,8 @@ final readonly class TracezillaSeedGateway implements SeedGateway
     public function partnersByRef(): array
     {
         $partners = [];
-
         foreach ($this->client->getAll('/partners', ['include' => 'locations', 'perPage' => 250]) as $partner) {
-            $ref = trim((string) ($partner['ref'] ?? ''));
+            $ref = $this->trimmedText($partner, 'ref');
             if ($ref === '') {
                 continue;
             }
@@ -26,8 +32,10 @@ final readonly class TracezillaSeedGateway implements SeedGateway
             if (isset($partners[$ref])) {
                 throw new RuntimeException("Several tracezilla partners have ref [{$ref}].");
             }
-
-            $partners[$ref] = ['id' => (string) $partner['id'], 'locations' => $this->locationsByRef($partner, $ref)];
+            $partners[$ref] = [
+                'id' => (string) $partner['id'],
+                'locations' => $this->locationsByRef($partner, $ref),
+            ];
         }
 
         return $partners;
@@ -35,37 +43,44 @@ final readonly class TracezillaSeedGateway implements SeedGateway
 
     public function ownCompany(string $name): array
     {
-        $matches = array_values(array_filter(
-            $this->client->getAll('/partners', ['keyword' => ['ct' => $name], 'include' => 'locations', 'perPage' => 250]),
-            static fn (array $partner): bool => strcasecmp(trim((string) ($partner['name'] ?? '')), trim($name)) === 0,
-        ));
-
-        if (count($matches) !== 1) {
-            throw new RuntimeException(count($matches) === 0
-                ? "No tracezilla partner is named [{$name}]. Check TRACEZILLA_OWN_COMPANY."
-                : "Several tracezilla partners are named [{$name}]. Rename one of them.");
+        $matches = $this->partnersNamed($name);
+        if (count($matches) === 0) {
+            throw new RuntimeException("No tracezilla partner is named [{$name}]. Check TRACEZILLA_OWN_COMPANY.");
+        }
+        if (count($matches) > 1) {
+            throw new RuntimeException("Several tracezilla partners are named [{$name}]. Rename one of them.");
         }
 
-        return ['id' => (string) $matches[0]['id'], 'locations' => $this->locationsByRef($matches[0], $name)];
+        $partner = $matches[0];
+
+        return [
+            'id' => (string) $partner['id'],
+            'locations' => $this->locationsByRef($partner, $name),
+        ];
     }
 
     public function skuCodes(): array
     {
         $codes = [];
         foreach ($this->client->getAll('/skus', ['perPage' => 250]) as $sku) {
-            $codes[trim((string) ($sku['sku_code'] ?? ''))] = true;
+            $code = $this->trimmedText($sku, 'sku_code');
+            if ($code !== '') {
+                $codes[$code] = true;
+            }
         }
-        unset($codes['']);
 
         return $codes;
     }
 
     public function purchaseOrderExists(string $extRef): bool
     {
-        $orders = $this->client->get('/orders/purchase', ['ext_ref' => ['eq' => $extRef]])['data'] ?? [];
+        $page = $this->client->get('/orders/purchase', ['ext_ref' => ['eq' => $extRef]]);
+        if (! isset($page['data'])) {
+            return false;
+        }
 
-        foreach ($orders as $order) {
-            if (($order['ext_ref'] ?? null) === $extRef) {
+        foreach ($page['data'] as $order) {
+            if (isset($order['ext_ref']) && $order['ext_ref'] === $extRef) {
                 return true;
             }
         }
@@ -75,37 +90,27 @@ final readonly class TracezillaSeedGateway implements SeedGateway
 
     public function createPartner(array $payload): string
     {
-        return $this->createdId($this->client->post('/partners', $payload), 'partner');
+        $response = $this->client->post('/partners', $payload);
+
+        return $this->createdId($response, 'partner');
     }
 
     public function createLocation(string $partnerId, array $payload): string
     {
-        return $this->createdId($this->client->post("/partners/{$partnerId}/locations", $payload), 'location');
-    }
+        $response = $this->client->post("/partners/{$partnerId}/locations", $payload);
 
-    /** Unit fields that tracezilla may replace when it creates an SKU. */
-    private const UNIT_FIELDS = ['unit_of_measure', 'lot_unit', 'default_uom_conversion'];
+        return $this->createdId($response, 'location');
+    }
 
     public function createSku(array $payload): void
     {
-        $created = $this->client->post('/skus', $payload)['data'] ?? [];
+        $response = $this->client->post('/skus', $payload);
+        $created = $this->dataOf($response);
         if ($this->unitsMatch($payload, $created)) {
             return;
         }
 
-        // On create, tracezilla locks the unit conversion and derives the lot
-        // unit from the unit of measure (pcs -> pcs, kg -> g). Updating the SKU
-        // with the lock removed stores the requested units.
-        $id = $this->createdId(['data' => $created], 'SKU');
-        $updated = $this->client->put("/skus/{$id}", ['lock_uom_conversion' => false] + $payload)['data'] ?? [];
-        if (! $this->unitsMatch($payload, $updated)) {
-            throw new RuntimeException(sprintf(
-                'tracezilla stored units %s instead of %s for SKU [%s].',
-                json_encode(array_intersect_key($updated, array_flip(self::UNIT_FIELDS))),
-                json_encode(array_intersect_key($payload, array_flip(self::UNIT_FIELDS))),
-                $payload['sku_code'],
-            ));
-        }
+        $this->correctUnits($payload, $this->createdId($response, 'SKU'));
     }
 
     public function createPurchaseOrder(array $payload): void
@@ -113,23 +118,61 @@ final readonly class TracezillaSeedGateway implements SeedGateway
         $this->client->put('/orders/purchase', $payload);
     }
 
-    private function unitsMatch(array $requested, array $stored): bool
+    /**
+     * On create, tracezilla locks the unit conversion and derives the lot unit
+     * from the unit of measure (pcs -> pcs, kg -> g). Updating the SKU with the
+     * lock removed stores the requested units.
+     *
+     * @param array<string, mixed> $payload
+     */
+    private function correctUnits(array $payload, string $skuId): void
     {
-        foreach (self::UNIT_FIELDS as $field) {
-            if (array_key_exists($field, $requested) && (string) $requested[$field] !== (string) ($stored[$field] ?? null)) {
-                return false;
+        $update = $payload;
+        $update['lock_uom_conversion'] = false;
+
+        $response = $this->client->put("/skus/{$skuId}", $update);
+        $updated = $this->dataOf($response);
+        if ($this->unitsMatch($payload, $updated)) {
+            return;
+        }
+
+        $stored = json_encode($this->unitsOf($updated));
+        $requested = json_encode($this->unitsOf($payload));
+        throw new RuntimeException("tracezilla stored units {$stored} instead of {$requested} for SKU [{$payload['sku_code']}].");
+    }
+
+    /**
+     * The partners whose name equals $name, ignoring case and surrounding spaces.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function partnersNamed(string $name): array
+    {
+        $candidates = $this->client->getAll('/partners', ['keyword' => ['ct' => $name], 'include' => 'locations', 'perPage' => 250]);
+
+        $matches = [];
+        foreach ($candidates as $partner) {
+            if (strcasecmp($this->trimmedText($partner, 'name'), trim($name)) === 0) {
+                $matches[] = $partner;
             }
         }
 
-        return true;
+        return $matches;
     }
 
-    /** @return array<string, string> */
+    /**
+     * @param array<string, mixed> $partner
+     * @return array<string, string>
+     */
     private function locationsByRef(array $partner, string $partnerLabel): array
     {
+        if (! isset($partner['locations'])) {
+            return [];
+        }
+
         $locations = [];
-        foreach ($partner['locations'] ?? [] as $location) {
-            $ref = trim((string) ($location['ref'] ?? ''));
+        foreach ($partner['locations'] as $location) {
+            $ref = $this->trimmedText($location, 'ref');
             if ($ref === '') {
                 continue;
             }
@@ -142,13 +185,83 @@ final readonly class TracezillaSeedGateway implements SeedGateway
         return $locations;
     }
 
+    /**
+     * @param array<string, mixed> $requested
+     * @param array<string, mixed> $stored
+     */
+    private function unitsMatch(array $requested, array $stored): bool
+    {
+        foreach (self::UNIT_FIELDS as $field) {
+            if (! array_key_exists($field, $requested)) {
+                continue;
+            }
+            $storedValue = '';
+            if (isset($stored[$field])) {
+                $storedValue = (string) $stored[$field];
+            }
+            if ((string) $requested[$field] !== $storedValue) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $sku
+     * @return array<string, mixed>
+     */
+    private function unitsOf(array $sku): array
+    {
+        $units = [];
+        foreach (self::UNIT_FIELDS as $field) {
+            if (array_key_exists($field, $sku)) {
+                $units[$field] = $sku[$field];
+            }
+        }
+
+        return $units;
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     * @return array<string, mixed>
+     */
+    private function dataOf(array $response): array
+    {
+        if (! isset($response['data']) || ! is_array($response['data'])) {
+            return [];
+        }
+
+        return $response['data'];
+    }
+
+    /** @param array<string, mixed> $response */
     private function createdId(array $response, string $type): string
     {
-        $id = $response['data']['id'] ?? null;
-        if (! is_scalar($id) || (string) $id === '') {
+        $data = $this->dataOf($response);
+        if (! isset($data['id']) || ! is_scalar($data['id'])) {
+            throw new RuntimeException("tracezilla did not return an ID for the created {$type}.");
+        }
+        $id = (string) $data['id'];
+        if ($id === '') {
             throw new RuntimeException("tracezilla did not return an ID for the created {$type}.");
         }
 
-        return (string) $id;
+        return $id;
+    }
+
+    /**
+     * The value under $key as trimmed text, or '' if it is missing.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function trimmedText(array $record, string $key): string
+    {
+        if (! isset($record[$key])) {
+            return '';
+        }
+
+        return trim((string) $record[$key]);
     }
 }

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce;
 
+/**
+ * Where the integration keeps its runtime files (locks, retries, tokens):
+ * TRACEZILLA_RUNTIME_DIR, or var/ in the project folder.
+ */
 final class RuntimeDirectory
 {
     public static function resolve(string $projectDirectory): string

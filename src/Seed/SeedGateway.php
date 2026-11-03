@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Seed;
 
+/**
+ * What the seed needs from tracezilla. The real gateway calls the API; the
+ * tests use an in-memory gateway.
+ */
 interface SeedGateway
 {
     /**

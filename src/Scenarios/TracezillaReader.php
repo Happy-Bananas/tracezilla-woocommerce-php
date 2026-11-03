@@ -46,14 +46,56 @@ final readonly class TracezillaReader
      */
     public function skus(): array
     {
-        return array_map(static fn (array $sku): array => [
-            'id' => (string) ($sku['id'] ?? ''),
-            'sku_code' => trim((string) ($sku['sku_code'] ?? '')),
-            'name' => (string) ($sku['global_name'] ?? ''),
-            'active' => ($sku['active'] ?? false) === true,
+        $records = $this->getAll('/skus', ['sortBy' => 'sku_code', 'sortDirection' => 'asc', 'perPage' => 250]);
+
+        $skus = [];
+        foreach ($records as $record) {
+            $skus[] = $this->skuFrom($record);
+        }
+
+        return $skus;
+    }
+
+    /**
+     * The fields a scenario usually needs from a tracezilla SKU.
+     *
+     * @param array<string, mixed> $record
+     * @return array{id: string, sku_code: string, name: string, active: bool, category: string, allow_sales: bool}
+     */
+    private function skuFrom(array $record): array
+    {
+        return [
+            'id' => $this->text($record, 'id'),
+            'sku_code' => trim($this->text($record, 'sku_code')),
+            'name' => $this->text($record, 'global_name'),
+            'active' => $this->isTrue($record, 'active'),
             // For example finished_good or raw_material.
-            'category' => (string) ($sku['category'] ?? ''),
-            'allow_sales' => ($sku['allow_sales'] ?? false) === true,
-        ], $this->getAll('/skus', ['sortBy' => 'sku_code', 'sortDirection' => 'asc', 'perPage' => 250]));
+            'category' => $this->text($record, 'category'),
+            'allow_sales' => $this->isTrue($record, 'allow_sales'),
+        ];
+    }
+
+    /**
+     * The value under $key as text, or '' if it is missing.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function text(array $record, string $key): string
+    {
+        if (! isset($record[$key])) {
+            return '';
+        }
+
+        return (string) $record[$key];
+    }
+
+    /** @param array<string, mixed> $record */
+    private function isTrue(array $record, string $key): bool
+    {
+        if (! isset($record[$key])) {
+            return false;
+        }
+
+        return $record[$key] === true;
     }
 }

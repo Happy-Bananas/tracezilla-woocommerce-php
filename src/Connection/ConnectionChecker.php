@@ -4,74 +4,142 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Connection;
 
-use Closure;
-use RuntimeException;
 use Throwable;
 
 /**
- * Checks the WooCommerce and tracezilla credentials with one read-only request
- * each. Both systems are always checked, so a failure in one does not hide the
- * state of the other.
+ * Checks that the WooCommerce and tracezilla credentials work, with one small
+ * read-only request each. Both are always checked, so a failure in one does
+ * not hide the state of the other.
  */
-final readonly class ConnectionChecker
+final class ConnectionChecker
 {
-    /**
-     * @param Closure(): array<string, mixed> $wooCommerceStatus Returns WooCommerce's system status.
-     * @param Closure(): array<string, mixed> $tracezillaSkus Returns one page of tracezilla SKUs.
-     */
     public function __construct(
-        private Closure $wooCommerceStatus,
-        private Closure $tracezillaSkus,
+        private WooCommerceConnection $wooCommerce,
+        private TracezillaConnection $tracezilla,
         private string $teamSlug,
     ) {
     }
 
-    /**
-     * @return array{
-     *     status: 'ok'|'failed',
-     *     woocommerce: array{connected: bool, store_url?: ?string, version?: ?string, error?: string},
-     *     tracezilla: array{connected: bool, team: string, error?: string}
-     * }
-     */
+    /** @return array<string, mixed> */
     public function check(): array
     {
-        $woocommerce = $this->attempt(function (): array {
-            $environment = ($this->wooCommerceStatus)()['environment'] ?? null;
-            if (! is_array($environment)) {
-                throw new RuntimeException('WooCommerce returned no system status.');
-            }
+        $wooCommerce = $this->checkWooCommerce();
+        $tracezilla = $this->checkTracezilla();
 
-            return [
-                'store_url' => is_string($environment['site_url'] ?? null) ? $environment['site_url'] : null,
-                'version' => is_string($environment['version'] ?? null) ? $environment['version'] : null,
-            ];
-        });
+        return $this->summary($wooCommerce, $tracezilla);
+    }
 
-        $tracezilla = ['team' => $this->teamSlug] + $this->attempt(function (): array {
-            if (! is_array(($this->tracezillaSkus)()['data'] ?? null)) {
-                throw new RuntimeException('tracezilla returned no data collection.');
-            }
+    /** @return array<string, mixed> */
+    private function checkWooCommerce(): array
+    {
+        try {
+            $status = $this->wooCommerce->systemStatus();
+        } catch (Throwable $exception) {
+            return $this->failure($exception->getMessage());
+        }
 
-            return [];
-        });
+        $environment = $this->environmentFrom($status);
+        if ($environment === null) {
+            return $this->failure('WooCommerce returned no system status.');
+        }
 
         return [
-            'status' => $woocommerce['connected'] && $tracezilla['connected'] ? 'ok' : 'failed',
-            'woocommerce' => $woocommerce,
+            'connected' => true,
+            'store_url' => $this->textOrNull($environment, 'site_url'),
+            'version' => $this->textOrNull($environment, 'version'),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function checkTracezilla(): array
+    {
+        $result = ['team' => $this->teamSlug];
+
+        try {
+            $page = $this->tracezilla->firstSku();
+        } catch (Throwable $exception) {
+            $result['connected'] = false;
+            $result['error'] = $exception->getMessage();
+
+            return $result;
+        }
+
+        if (! $this->hasSkuList($page)) {
+            $result['connected'] = false;
+            $result['error'] = 'tracezilla returned no data collection.';
+
+            return $result;
+        }
+
+        $result['connected'] = true;
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $wooCommerce
+     * @param array<string, mixed> $tracezilla
+     * @return array<string, mixed>
+     */
+    private function summary(array $wooCommerce, array $tracezilla): array
+    {
+        $status = 'failed';
+        if ($wooCommerce['connected'] && $tracezilla['connected']) {
+            $status = 'ok';
+        }
+
+        return [
+            'status' => $status,
+            'woocommerce' => $wooCommerce,
             'tracezilla' => $tracezilla,
         ];
     }
 
     /**
-     * @param Closure(): array<string, mixed> $check
-     * @return array<string, mixed>
+     * The "environment" part of WooCommerce's status, or null if it is missing.
+     *
+     * @param array<string, mixed> $status
+     * @return array<string, mixed>|null
      */
-    private function attempt(Closure $check): array
+    private function environmentFrom(array $status): ?array
     {
-        try {
-            return ['connected' => true] + $check();
-        } catch (Throwable $exception) {
-            return ['connected' => false, 'error' => $exception->getMessage()];
+        if (! isset($status['environment'])) {
+            return null;
         }
+        if (! is_array($status['environment'])) {
+            return null;
+        }
+
+        return $status['environment'];
+    }
+
+    /**
+     * Whether tracezilla answered with a list of SKUs, even an empty one.
+     *
+     * @param array<string, mixed> $page
+     */
+    private function hasSkuList(array $page): bool
+    {
+        if (! isset($page['data'])) {
+            return false;
+        }
+
+        return is_array($page['data']);
+    }
+
+    /** @return array{connected: false, error: string} */
+    private function failure(string $message): array
+    {
+        return ['connected' => false, 'error' => $message];
+    }
+
+    /** @param array<string, mixed> $values */
+    private function textOrNull(array $values, string $key): ?string
+    {
+        if (isset($values[$key]) && is_string($values[$key])) {
+            return $values[$key];
+        }
+
+        return null;
     }
 }

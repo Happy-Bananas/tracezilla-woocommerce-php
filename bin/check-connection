@@ -3,48 +3,63 @@
 
 declare(strict_types=1);
 
+// Checks the WooCommerce and tracezilla connections and prints the result.
+// Exit code 0 means both connections work.
+
 use Dotenv\Dotenv;
-use Tracezilla\WooCommerce\Configuration;
 use Tracezilla\WooCommerce\Connection\ConnectionChecker;
-use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
-use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
+use Tracezilla\WooCommerce\Connection\LiveTracezillaConnection;
+use Tracezilla\WooCommerce\Connection\LiveWooCommerceConnection;
 
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';
 Dotenv::createImmutable($project)->safeLoad();
 
-$options = getopt('', ['json']);
-
-// Configuration is loaded inside each check, so a missing setting is reported
-// for that system without stopping the other check.
-$result = (new ConnectionChecker(
-    static fn (): array => (new WooCommerceClient(Configuration::fromEnvironment()))->systemStatus(),
-    static function () use ($project): array {
-        $configuration = TracezillaConfiguration::fromEnvironment($project);
-
-        return (new TracezillaClient($configuration, TokenProvider::fromConfiguration($configuration)))
-            ->get('/skus', ['perPage' => 1]);
-    },
+$checker = new ConnectionChecker(
+    new LiveWooCommerceConnection(),
+    new LiveTracezillaConnection($project),
     (string) getenv('TRACEZILLA_TEAM_SLUG'),
-))->check();
+);
+$result = $checker->check();
 
+$options = getopt('', ['json']);
 if (array_key_exists('json', $options)) {
-    echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL;
-    exit($result['status'] === 'ok' ? 0 : 1);
+    printJson($result);
+} else {
+    printText($result);
 }
 
-echo $result['status'] === 'ok' ? "Connection check passed.\n" : "Connection check failed.\n";
+if ($result['status'] === 'ok') {
+    exit(0);
+}
+exit(1);
 
-$woocommerce = $result['woocommerce'];
-echo 'WooCommerce: '.($woocommerce['connected']
-    ? 'connected to '.($woocommerce['store_url'] ?? 'unknown store').' (WooCommerce '.($woocommerce['version'] ?? 'unknown').')'
-    : 'FAILED - '.$woocommerce['error'])."\n";
+function printJson(array $result): void
+{
+    echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
+}
 
-$tracezilla = $result['tracezilla'];
-echo 'tracezilla:  '.($tracezilla['connected']
-    ? "connected to team {$tracezilla['team']}"
-    : 'FAILED - '.$tracezilla['error'])."\n";
+function printText(array $result): void
+{
+    if ($result['status'] === 'ok') {
+        echo "Connection check passed.\n";
+    } else {
+        echo "Connection check failed.\n";
+    }
 
-exit($result['status'] === 'ok' ? 0 : 1);
+    $wooCommerce = $result['woocommerce'];
+    if ($wooCommerce['connected']) {
+        $storeUrl = $wooCommerce['store_url'] ?? 'unknown store';
+        $version = $wooCommerce['version'] ?? 'unknown';
+        echo "WooCommerce: connected to {$storeUrl} (WooCommerce {$version})\n";
+    } else {
+        echo "WooCommerce: FAILED - {$wooCommerce['error']}\n";
+    }
+
+    $tracezilla = $result['tracezilla'];
+    if ($tracezilla['connected']) {
+        echo "tracezilla:  connected to team {$tracezilla['team']}\n";
+    } else {
+        echo "tracezilla:  FAILED - {$tracezilla['error']}\n";
+    }
+}

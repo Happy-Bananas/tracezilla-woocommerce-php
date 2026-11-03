@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce;
 
+use RuntimeException;
+
+/**
+ * The WooCommerce settings from .env.
+ */
 final readonly class Configuration
 {
     public function __construct(
@@ -17,23 +22,32 @@ final readonly class Configuration
 
     public static function fromEnvironment(): self
     {
-        $url = rtrim((string) getenv('WOOCOMMERCE_URL'), '/');
-        $key = (string) getenv('WOOCOMMERCE_CONSUMER_KEY');
-        $secret = (string) getenv('WOOCOMMERCE_CONSUMER_SECRET');
-
-        foreach (['WOOCOMMERCE_URL' => $url, 'WOOCOMMERCE_CONSUMER_KEY' => $key, 'WOOCOMMERCE_CONSUMER_SECRET' => $secret] as $name => $value) {
-            if ($value === '') {
-                throw new \RuntimeException("Missing required environment variable: {$name}");
-            }
-        }
-
         return new self(
-            $url,
-            $key,
-            $secret,
-            (float) (getenv('HTTP_TIMEOUT') ?: 30),
-            (float) (getenv('HTTP_CONNECT_TIMEOUT') ?: 10),
+            rtrim(self::required('WOOCOMMERCE_URL'), '/'),
+            self::required('WOOCOMMERCE_CONSUMER_KEY'),
+            self::required('WOOCOMMERCE_CONSUMER_SECRET'),
+            (float) self::optional('HTTP_TIMEOUT', '30'),
+            (float) self::optional('HTTP_CONNECT_TIMEOUT', '10'),
         );
     }
-}
 
+    private static function required(string $name): string
+    {
+        $value = (string) getenv($name);
+        if ($value === '') {
+            throw new RuntimeException("Missing required environment variable: {$name}");
+        }
+
+        return $value;
+    }
+
+    private static function optional(string $name, string $default): string
+    {
+        $value = (string) getenv($name);
+        if ($value === '') {
+            return $default;
+        }
+
+        return $value;
+    }
+}

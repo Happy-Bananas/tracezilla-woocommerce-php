@@ -35,7 +35,12 @@ final class TokenProviderTest extends TestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->directory.'/*') ?: []);
+        $files = glob($this->directory.'/*');
+        if ($files !== false) {
+            foreach ($files as $file) {
+                unlink($file);
+            }
+        }
         @rmdir($this->directory);
     }
 
@@ -70,7 +75,7 @@ final class TokenProviderTest extends TestCase
 
         parse_str((string) $this->history[0]['request']->getBody(), $form);
         self::assertSame(['refresh_token', 'refresh-1'], [$form['grant_type'], $form['refresh_token']]);
-        self::assertSame('refresh-2', $this->store->load()?->refreshToken);
+        self::assertSame('refresh-2', $this->storedRefreshToken());
     }
 
     public function test_a_rejected_token_is_renewed_only_once(): void
@@ -114,7 +119,7 @@ final class TokenProviderTest extends TestCase
             $this->store,
             'client-id',
             'client-secret',
-            fn (): DateTimeImmutable => $this->now,
+            new FixedClock($this->now),
         );
     }
 
@@ -126,5 +131,15 @@ final class TokenProviderTest extends TestCase
             'access_token' => $access,
             'refresh_token' => $refresh,
         ], JSON_THROW_ON_ERROR));
+    }
+
+    private function storedRefreshToken(): ?string
+    {
+        $tokens = $this->store->load();
+        if ($tokens === null) {
+            return null;
+        }
+
+        return $tokens->refreshToken;
     }
 }

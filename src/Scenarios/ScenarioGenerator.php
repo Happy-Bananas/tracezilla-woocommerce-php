@@ -25,8 +25,15 @@ final readonly class ScenarioGenerator
     /** @return list<string> */
     public function templates(): array
     {
-        $directories = glob($this->templateDirectory().'/*', GLOB_ONLYDIR) ?: [];
-        $templates = array_map('basename', $directories);
+        $directories = glob($this->templateDirectory().'/*', GLOB_ONLYDIR);
+        if ($directories === false) {
+            return [];
+        }
+
+        $templates = [];
+        foreach ($directories as $directory) {
+            $templates[] = basename($directory);
+        }
         sort($templates);
 
         return $templates;

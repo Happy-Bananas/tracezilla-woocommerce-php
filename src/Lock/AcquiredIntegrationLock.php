@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Lock;
 
+/**
+ * A lock this run holds. Release it when done; it is also released when the
+ * run ends.
+ */
 final class AcquiredIntegrationLock
 {
     private bool $released = false;

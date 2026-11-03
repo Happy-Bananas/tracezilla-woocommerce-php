@@ -166,22 +166,13 @@ final class SeederTest extends TestCase
 
     private function data(): array
     {
-        $location = static fn (string $ref): array => ['ref' => $ref, 'name' => $ref, 'country' => 'DK'];
-        $sku = static fn (string $code): array => [
-            'sku_code' => $code,
-            'unit_of_measure' => 'pcs',
-            'lot_unit' => 'pcs',
-            'weight_factor_net' => 1,
-            'weight_factor_gross' => 1,
-        ];
-
         return [
             'version' => 1,
-            'own_company' => ['locations' => [$location('TZ-WAREHOUSE-MAIN')]],
+            'own_company' => ['locations' => [$this->location('TZ-WAREHOUSE-MAIN')]],
             'partners' => [
-                ['ref' => 'TZ-SUPPLIER', 'name' => 'Supplier', 'country' => 'DK', 'locations' => [$location('TZ-SUPPLIER-HQ')]],
+                ['ref' => 'TZ-SUPPLIER', 'name' => 'Supplier', 'country' => 'DK', 'locations' => [$this->location('TZ-SUPPLIER-HQ')]],
             ],
-            'skus' => [$sku('TZ-A'), $sku('TZ-B')],
+            'skus' => [$this->sku('TZ-A'), $this->sku('TZ-B')],
             'purchase_orders' => [[
                 'ext_ref' => 'TZ-STOCK-001',
                 'supplier' => ['partner' => 'TZ-SUPPLIER', 'location' => 'TZ-SUPPLIER-HQ'],
@@ -191,6 +182,24 @@ final class SeederTest extends TestCase
                 'receive' => true,
                 'lines' => [['sku_code' => 'TZ-A', 'quantity' => 10, 'unit_price' => 5]],
             ]],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function location(string $ref): array
+    {
+        return ['ref' => $ref, 'name' => $ref, 'country' => 'DK'];
+    }
+
+    /** @return array<string, mixed> */
+    private function sku(string $code): array
+    {
+        return [
+            'sku_code' => $code,
+            'unit_of_measure' => 'pcs',
+            'lot_unit' => 'pcs',
+            'weight_factor_net' => 1,
+            'weight_factor_gross' => 1,
         ];
     }
 }

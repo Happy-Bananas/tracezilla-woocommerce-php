@@ -44,12 +44,13 @@ final class FileIntegrationLockTest extends TestCase
             'integration',
             ['command' => 'orders:import'],
         ));
-        self::assertSame('tracezilla:seed', $locks->metadata('integration')['command'] ?? null);
+        $metadata = $locks->metadata('integration');
+        self::assertSame('tracezilla:seed', $metadata['command']);
 
         $first->release();
         $second = $locks->acquire('integration', ['command' => 'orders:import']);
         self::assertNotNull($second);
-        $second?->release();
+        $second->release();
     }
 }
 

@@ -43,7 +43,12 @@ final class TracezillaSeedGatewayTest extends TestCase
 
     protected function tearDown(): void
     {
-        array_map('unlink', glob($this->directory.'/*') ?: []);
+        $files = glob($this->directory.'/*');
+        if ($files !== false) {
+            foreach ($files as $file) {
+                unlink($file);
+            }
+        }
         @rmdir($this->directory);
     }
 

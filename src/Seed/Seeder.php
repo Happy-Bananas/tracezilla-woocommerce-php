@@ -11,194 +11,393 @@ use Throwable;
 /**
  * Creates the records of a seed definition that do not exist in tracezilla.
  *
- * Existing records are reported and left untouched. Without $execute nothing
- * is written, and records that depend on not-yet-created ones are reported as
- * would_create.
+ * Existing records are reported and left untouched. In a dry run nothing is
+ * written, and the records that would be created are reported as would_create.
  */
-final readonly class Seeder
+final class Seeder
 {
+    /**
+     * The partners known so far: those in tracezilla, plus those this run
+     * created or would create. The ID is null for a partner or location that
+     * exists only in a dry run.
+     *
+     * @var array<string, array{id: ?string, locations: array<string, ?string>}>
+     */
+    private array $partners = [];
+
+    /** @var array<string, true> The SKU codes known so far */
+    private array $skuCodes = [];
+
+    private SeedResult $result;
+    private bool $dryRun = true;
+
     public function __construct(
         private SeedGateway $gateway,
         private ?string $ownCompanyName = null,
         private ?int $ownerId = null,
         private DateTimeImmutable $today = new DateTimeImmutable('today'),
     ) {
+        $this->result = new SeedResult();
     }
 
     public function run(SeedDefinition $definition, bool $execute): SeedResult
     {
-        $result = new SeedResult();
+        $this->startRun($execute);
+        $this->seedOwnCompany($definition);
+        $this->seedPartners($definition->partners);
+        $this->seedSkus($definition->skus);
+        $this->seedPurchaseOrders($definition->purchaseOrders);
 
-        // ref => id, or null when the record is only planned in a dry run.
-        /** @var array<string, array{id: ?string, locations: array<string, ?string>}> $partners */
-        $partners = $this->gateway->partnersByRef();
-
-        if ($definition->usesOwnCompany()) {
-            if ($this->ownCompanyName === null || trim($this->ownCompanyName) === '') {
-                throw new RuntimeException('The seed file uses own_company. Set TRACEZILLA_OWN_COMPANY to the name of your company in tracezilla.');
-            }
-            $partners[SeedDefinition::OWN_COMPANY] = $this->gateway->ownCompany($this->ownCompanyName);
-            $this->seedLocations(SeedDefinition::OWN_COMPANY, $definition->ownCompanyLocations, $partners, $execute, $result);
-        }
-
-        foreach ($definition->partners as $partner) {
-            $this->seedPartner($partner, $partners, $execute, $result);
-        }
-
-        $skuCodes = $this->gateway->skuCodes();
-        foreach ($definition->skus as $sku) {
-            $this->seedSku($sku, $skuCodes, $execute, $result);
-        }
-
-        foreach ($definition->purchaseOrders as $order) {
-            $this->seedPurchaseOrder($order, $partners, $skuCodes, $execute, $result);
-        }
-
-        return $result;
+        return $this->result;
     }
 
-    private function seedPartner(array $partner, array &$partners, bool $execute, SeedResult $result): void
+    private function startRun(bool $execute): void
+    {
+        $this->result = new SeedResult();
+        $this->dryRun = ! $execute;
+        $this->partners = $this->gateway->partnersByRef();
+    }
+
+    private function seedOwnCompany(SeedDefinition $definition): void
+    {
+        if (! $definition->usesOwnCompany()) {
+            return;
+        }
+        if (! $this->hasOwnCompanyName()) {
+            throw new RuntimeException('The seed file uses own_company. Set TRACEZILLA_OWN_COMPANY to the name of your company in tracezilla.');
+        }
+
+        $this->partners[SeedDefinition::OWN_COMPANY] = $this->gateway->ownCompany((string) $this->ownCompanyName);
+        $this->seedLocations(SeedDefinition::OWN_COMPANY, $definition->ownCompanyLocations);
+    }
+
+    private function hasOwnCompanyName(): bool
+    {
+        if ($this->ownCompanyName === null) {
+            return false;
+        }
+
+        return trim($this->ownCompanyName) !== '';
+    }
+
+    /** @param list<array<string, mixed>> $partners */
+    private function seedPartners(array $partners): void
+    {
+        foreach ($partners as $partner) {
+            $this->seedPartner($partner);
+        }
+    }
+
+    /** @param array<string, mixed> $partner */
+    private function seedPartner(array $partner): void
     {
         $ref = (string) $partner['ref'];
-        $locations = $partner['locations'] ?? [];
-        unset($partner['locations']);
+        $locations = $this->locationsOf($partner);
 
-        if (isset($partners[$ref])) {
-            $result->add('partner', $ref, SeedResult::EXISTS);
-        } elseif (! $execute) {
-            $partners[$ref] = ['id' => null, 'locations' => []];
-            $result->add('partner', $ref, SeedResult::WOULD_CREATE, (string) $partner['name']);
+        if (isset($this->partners[$ref])) {
+            $this->result->add('partner', $ref, SeedResult::EXISTS);
+        } elseif ($this->dryRun) {
+            $this->partners[$ref] = ['id' => null, 'locations' => []];
+            $this->result->add('partner', $ref, SeedResult::WOULD_CREATE, (string) $partner['name']);
         } else {
-            try {
-                // Order import needs an owner; default to the user running the seed.
-                if ($this->ownerId !== null) {
-                    $partner += ['owned_by_id' => $this->ownerId];
-                }
-                $partners[$ref] = ['id' => $this->gateway->createPartner($partner), 'locations' => []];
-                $result->add('partner', $ref, SeedResult::CREATED, (string) $partner['name']);
-            } catch (Throwable $exception) {
-                $result->add('partner', $ref, SeedResult::FAILED, $exception->getMessage());
-                foreach ($locations as $location) {
-                    $result->add('location', "{$ref}/{$location['ref']}", SeedResult::FAILED, 'Partner was not created.');
-                }
+            $created = $this->createPartner($ref, $partner);
+            if (! $created) {
+                $this->reportLocationsNotCreated($ref, $locations);
 
                 return;
             }
         }
 
-        $this->seedLocations($ref, $locations, $partners, $execute, $result);
+        $this->seedLocations($ref, $locations);
     }
 
-    private function seedLocations(string $ref, array $locations, array &$partners, bool $execute, SeedResult $result): void
+    /**
+     * @param array<string, mixed> $partner
+     * @return bool Whether the partner was created
+     */
+    private function createPartner(string $ref, array $partner): bool
+    {
+        $payload = $partner;
+        unset($payload['locations']);
+        // Order import needs an owner; default to the user running the seed.
+        if ($this->ownerId !== null && ! isset($payload['owned_by_id'])) {
+            $payload['owned_by_id'] = $this->ownerId;
+        }
+
+        try {
+            $id = $this->gateway->createPartner($payload);
+        } catch (Throwable $exception) {
+            $this->result->add('partner', $ref, SeedResult::FAILED, $exception->getMessage());
+
+            return false;
+        }
+
+        $this->partners[$ref] = ['id' => $id, 'locations' => []];
+        $this->result->add('partner', $ref, SeedResult::CREATED, (string) $partner['name']);
+
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $partner
+     * @return list<array<string, mixed>>
+     */
+    private function locationsOf(array $partner): array
+    {
+        if (! isset($partner['locations'])) {
+            return [];
+        }
+
+        return $partner['locations'];
+    }
+
+    /** @param list<array<string, mixed>> $locations */
+    private function reportLocationsNotCreated(string $partnerRef, array $locations): void
     {
         foreach ($locations as $location) {
-            $key = "{$ref}/{$location['ref']}";
-            $partnerId = $partners[$ref]['id'];
-
-            if (array_key_exists($location['ref'], $partners[$ref]['locations'])) {
-                $result->add('location', $key, SeedResult::EXISTS);
-            } elseif (! $execute || $partnerId === null) {
-                $partners[$ref]['locations'][$location['ref']] = null;
-                $result->add('location', $key, SeedResult::WOULD_CREATE, (string) $location['name']);
-            } else {
-                try {
-                    $partners[$ref]['locations'][$location['ref']] = $this->gateway->createLocation($partnerId, $location);
-                    $result->add('location', $key, SeedResult::CREATED, (string) $location['name']);
-                } catch (Throwable $exception) {
-                    $result->add('location', $key, SeedResult::FAILED, $exception->getMessage());
-                }
-            }
+            $this->result->add('location', "{$partnerRef}/{$location['ref']}", SeedResult::FAILED, 'Partner was not created.');
         }
     }
 
-    private function seedSku(array $sku, array &$skuCodes, bool $execute, SeedResult $result): void
+    /** @param list<array<string, mixed>> $locations */
+    private function seedLocations(string $partnerRef, array $locations): void
     {
-        $code = (string) $sku['sku_code'];
+        foreach ($locations as $location) {
+            $this->seedLocation($partnerRef, $location);
+        }
+    }
 
-        if (isset($skuCodes[$code])) {
-            $result->add('sku', $code, SeedResult::EXISTS);
+    /** @param array<string, mixed> $location */
+    private function seedLocation(string $partnerRef, array $location): void
+    {
+        $locationRef = (string) $location['ref'];
+        $key = "{$partnerRef}/{$locationRef}";
+        $partnerId = $this->partners[$partnerRef]['id'];
+
+        if ($this->locationIsKnown($partnerRef, $locationRef)) {
+            $this->result->add('location', $key, SeedResult::EXISTS);
 
             return;
         }
-        if (! $execute) {
-            $skuCodes[$code] = true;
-            $result->add('sku', $code, SeedResult::WOULD_CREATE, (string) ($sku['global_name'] ?? ''));
+        if ($this->dryRun || $partnerId === null) {
+            $this->partners[$partnerRef]['locations'][$locationRef] = null;
+            $this->result->add('location', $key, SeedResult::WOULD_CREATE, (string) $location['name']);
+
+            return;
+        }
+
+        try {
+            $locationId = $this->gateway->createLocation($partnerId, $location);
+        } catch (Throwable $exception) {
+            $this->result->add('location', $key, SeedResult::FAILED, $exception->getMessage());
+
+            return;
+        }
+        $this->partners[$partnerRef]['locations'][$locationRef] = $locationId;
+        $this->result->add('location', $key, SeedResult::CREATED, (string) $location['name']);
+    }
+
+    private function partnerIsKnown(string $partnerRef): bool
+    {
+        return isset($this->partners[$partnerRef]);
+    }
+
+    private function locationIsKnown(string $partnerRef, string $locationRef): bool
+    {
+        // array_key_exists, not isset: a location planned in a dry run has the ID null.
+        return array_key_exists($locationRef, $this->partners[$partnerRef]['locations']);
+    }
+
+    /** @param list<array<string, mixed>> $skus */
+    private function seedSkus(array $skus): void
+    {
+        $this->skuCodes = $this->gateway->skuCodes();
+        foreach ($skus as $sku) {
+            $this->seedSku($sku);
+        }
+    }
+
+    /** @param array<string, mixed> $sku */
+    private function seedSku(array $sku): void
+    {
+        $code = (string) $sku['sku_code'];
+        $name = '';
+        if (isset($sku['global_name'])) {
+            $name = (string) $sku['global_name'];
+        }
+
+        if (isset($this->skuCodes[$code])) {
+            $this->result->add('sku', $code, SeedResult::EXISTS);
+
+            return;
+        }
+        if ($this->dryRun) {
+            $this->skuCodes[$code] = true;
+            $this->result->add('sku', $code, SeedResult::WOULD_CREATE, $name);
 
             return;
         }
 
         try {
             $this->gateway->createSku($sku);
-            $skuCodes[$code] = true;
-            $result->add('sku', $code, SeedResult::CREATED, (string) ($sku['global_name'] ?? ''));
         } catch (Throwable $exception) {
-            $result->add('sku', $code, SeedResult::FAILED, $exception->getMessage());
+            $this->result->add('sku', $code, SeedResult::FAILED, $exception->getMessage());
+
+            return;
+        }
+        $this->skuCodes[$code] = true;
+        $this->result->add('sku', $code, SeedResult::CREATED, $name);
+    }
+
+    /** @param list<array<string, mixed>> $orders */
+    private function seedPurchaseOrders(array $orders): void
+    {
+        foreach ($orders as $order) {
+            $this->seedPurchaseOrder($order);
         }
     }
 
-    private function seedPurchaseOrder(array $order, array $partners, array $skuCodes, bool $execute, SeedResult $result): void
+    /** @param array<string, mixed> $order */
+    private function seedPurchaseOrder(array $order): void
     {
         $extRef = (string) $order['ext_ref'];
 
-        $problems = [];
-        foreach (['supplier', 'deliver_to'] as $role) {
-            ['partner' => $partnerRef, 'location' => $locationRef] = $order[$role];
-            if (! isset($partners[$partnerRef])) {
-                $problems[] = "{$role} partner [{$partnerRef}] is not in tracezilla or the seed file";
-            } elseif (! array_key_exists($locationRef, $partners[$partnerRef]['locations'])) {
-                $problems[] = "{$role} location [{$partnerRef}/{$locationRef}] is not in tracezilla or the seed file";
-            }
-        }
-        foreach ($order['lines'] as $line) {
-            if (! isset($skuCodes[(string) $line['sku_code']])) {
-                $problems[] = "SKU [{$line['sku_code']}] is not in tracezilla or the seed file";
-            }
-        }
+        $problems = $this->problemsWith($order);
         if ($problems !== []) {
-            $result->add('purchase_order', $extRef, SeedResult::INVALID, implode('; ', $problems).'.');
+            $this->result->add('purchase_order', $extRef, SeedResult::INVALID, implode('; ', $problems).'.');
 
             return;
         }
 
-        $supplier = $order['supplier'];
-        $deliverTo = $order['deliver_to'];
-        $ids = [
-            'supplier' => $partners[$supplier['partner']]['id'],
-            'supplier_location' => $partners[$supplier['partner']]['locations'][$supplier['location']],
-            'deliver_to' => $partners[$deliverTo['partner']]['id'],
-            'deliver_to_location' => $partners[$deliverTo['partner']]['locations'][$deliverTo['location']],
-        ];
-        $detail = count($order['lines']).' lines'.(($order['receive'] ?? false) ? ', received' : '');
+        $ids = $this->partnerAndLocationIds($order);
+        $allCreated = $this->allIdsKnown($ids);
+        $detail = $this->describePurchaseOrder($order);
 
-        if (! in_array(null, $ids, true) && $this->gateway->purchaseOrderExists($extRef)) {
-            $result->add('purchase_order', $extRef, SeedResult::EXISTS);
+        if ($allCreated && $this->gateway->purchaseOrderExists($extRef)) {
+            $this->result->add('purchase_order', $extRef, SeedResult::EXISTS);
 
             return;
         }
-        if (! $execute) {
-            $result->add('purchase_order', $extRef, SeedResult::WOULD_CREATE, $detail);
+        if ($this->dryRun) {
+            $this->result->add('purchase_order', $extRef, SeedResult::WOULD_CREATE, $detail);
 
             return;
         }
-        if (in_array(null, $ids, true)) {
-            $result->add('purchase_order', $extRef, SeedResult::FAILED, 'A partner or location it uses was not created.');
+        if (! $allCreated) {
+            $this->result->add('purchase_order', $extRef, SeedResult::FAILED, 'A partner or location it uses was not created.');
 
             return;
         }
 
         try {
             $this->gateway->createPurchaseOrder($this->purchaseOrderPayload($order, $ids));
-            $result->add('purchase_order', $extRef, SeedResult::CREATED, $detail);
         } catch (Throwable $exception) {
-            $result->add('purchase_order', $extRef, SeedResult::FAILED, $exception->getMessage());
+            $this->result->add('purchase_order', $extRef, SeedResult::FAILED, $exception->getMessage());
+
+            return;
         }
+        $this->result->add('purchase_order', $extRef, SeedResult::CREATED, $detail);
     }
 
-    /** @param array<string, string> $ids */
+    /**
+     * Partners, locations, and SKUs the order refers to that are neither in
+     * tracezilla nor in the seed file.
+     *
+     * @param array<string, mixed> $order
+     * @return list<string>
+     */
+    private function problemsWith(array $order): array
+    {
+        $problems = [];
+        foreach (['supplier', 'deliver_to'] as $role) {
+            $partnerRef = (string) $order[$role]['partner'];
+            $locationRef = (string) $order[$role]['location'];
+            if (! $this->partnerIsKnown($partnerRef)) {
+                $problems[] = "{$role} partner [{$partnerRef}] is not in tracezilla or the seed file";
+            } elseif (! $this->locationIsKnown($partnerRef, $locationRef)) {
+                $problems[] = "{$role} location [{$partnerRef}/{$locationRef}] is not in tracezilla or the seed file";
+            }
+        }
+        foreach ($order['lines'] as $line) {
+            $skuCode = (string) $line['sku_code'];
+            if (! isset($this->skuCodes[$skuCode])) {
+                $problems[] = "SKU [{$skuCode}] is not in tracezilla or the seed file";
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @return array<string, ?string>
+     */
+    private function partnerAndLocationIds(array $order): array
+    {
+        $supplier = $order['supplier'];
+        $deliverTo = $order['deliver_to'];
+
+        return [
+            'supplier' => $this->partners[$supplier['partner']]['id'],
+            'supplier_location' => $this->partners[$supplier['partner']]['locations'][$supplier['location']],
+            'deliver_to' => $this->partners[$deliverTo['partner']]['id'],
+            'deliver_to_location' => $this->partners[$deliverTo['partner']]['locations'][$deliverTo['location']],
+        ];
+    }
+
+    /**
+     * Whether every partner and location already exists in tracezilla. In a
+     * dry run, records that would be created have no ID yet.
+     *
+     * @param array<string, ?string> $ids
+     */
+    private function allIdsKnown(array $ids): bool
+    {
+        foreach ($ids as $id) {
+            if ($id === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @param array<string, mixed> $order */
+    private function describePurchaseOrder(array $order): string
+    {
+        $detail = count($order['lines']).' lines';
+        if ($this->isReceived($order)) {
+            $detail .= ', received';
+        }
+
+        return $detail;
+    }
+
+    /** @param array<string, mixed> $order */
+    private function isReceived(array $order): bool
+    {
+        if (! isset($order['receive'])) {
+            return false;
+        }
+
+        return $order['receive'] === true;
+    }
+
+    /**
+     * @param array<string, mixed> $order
+     * @param array<string, ?string> $ids
+     * @return array<string, mixed>
+     */
     private function purchaseOrderPayload(array $order, array $ids): array
     {
         $date = $this->today->format('Y-m-d');
         $supplier = ['partner_id' => $ids['supplier'], 'location_id' => $ids['supplier_location']];
+        $deliverTo = ['partner_id' => $ids['deliver_to'], 'location_id' => $ids['deliver_to_location']];
+
+        $afterSaving = 'none';
+        if ($this->isReceived($order)) {
+            $afterSaving = 'receive';
+        }
 
         return [
             'order_header' => [
@@ -212,12 +411,12 @@ final readonly class Seeder
                 'partners' => [
                     'supplier' => $supplier,
                     'pickup_from' => $supplier,
-                    'deliver_to' => ['partner_id' => $ids['deliver_to'], 'location_id' => $ids['deliver_to_location']],
+                    'deliver_to' => $deliverTo,
                 ],
             ],
             'inbound_lots' => $order['lines'],
             'price_logic' => 'none',
-            'post_save_action' => ($order['receive'] ?? false) ? 'receive' : 'none',
+            'post_save_action' => $afterSaving,
             'ignore_missing_skus' => false,
         ];
     }
