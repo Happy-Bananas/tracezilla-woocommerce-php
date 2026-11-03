@@ -9,7 +9,7 @@ use Tracezilla\WooCommerce\Tracezilla\Client;
 /**
  * Read-only access to the tracezilla API for a scenario's DataReader. Paths are
  * relative to /api/v1/{team-slug}/, for example "/skus".
- * https://tech.tracezilla.com/docs/rest-api-v1/
+ * https://tech.tracezilla.com/docs/rest-api
  */
 final readonly class TracezillaReader
 {
