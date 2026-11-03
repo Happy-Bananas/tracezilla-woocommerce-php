@@ -3,15 +3,18 @@
 
 declare(strict_types=1);
 
-// Runs a scenario: its DataReader reads WooCommerce and tracezilla, and its
-// BusinessRules decide the result, which is printed as JSON.
+// Runs a scenario: its DataReader reads WooCommerce and tracezilla, its
+// BusinessRules decide the result, and the changes the rules planned are
+// written only with --execute --confirm. The result is printed as JSON.
 
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Configuration;
+use Tracezilla\WooCommerce\Scenarios\LiveChangeWriter;
 use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
 use Tracezilla\WooCommerce\Scenarios\TracezillaReader;
 use Tracezilla\WooCommerce\Scenarios\WooCommerceReader;
 use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
+use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
 use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
@@ -20,9 +23,42 @@ $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';
 Dotenv::createImmutable($project)->safeLoad();
 
-$arguments = array_slice($argv, 1);
-if (count($arguments) !== 1 || str_starts_with($arguments[0], '-')) {
-    fwrite(STDERR, "Usage: php bin/bifrost-connect scenario:run <name>\n");
+$usage = <<<'TEXT'
+    Usage: php bin/bifrost-connect scenario:run <name> [--execute --confirm] [--limit=<number>]
+
+    Without --execute --confirm nothing is written: the changes the scenario
+    plans are only reported (dry run). --limit writes at most that many changes.
+
+    TEXT;
+
+$name = null;
+$execute = false;
+$confirm = false;
+$limit = null;
+foreach (array_slice($argv, 1) as $argument) {
+    if ($argument === '--execute') {
+        $execute = true;
+    } elseif ($argument === '--confirm') {
+        $confirm = true;
+    } elseif (str_starts_with($argument, '--limit=')) {
+        $limit = positiveNumberOrNull(substr($argument, strlen('--limit=')));
+        if ($limit === null) {
+            fwrite(STDERR, $usage);
+            exit(2);
+        }
+    } elseif (! str_starts_with($argument, '-') && $name === null) {
+        $name = $argument;
+    } else {
+        fwrite(STDERR, $usage);
+        exit(2);
+    }
+}
+if ($name === null) {
+    fwrite(STDERR, $usage);
+    exit(2);
+}
+if ($execute !== $confirm) {
+    fwrite(STDERR, "Writing requires both --execute and --confirm. Nothing was written.\n");
     exit(2);
 }
 
@@ -31,14 +67,50 @@ try {
     $configuration = TracezillaConfiguration::fromEnvironment($project);
     $tracezilla = new TracezillaClient($configuration, TokenProvider::fromConfiguration($configuration));
 
-    $result = (new ScenarioRunner(
+    $runner = new ScenarioRunner(
         $project,
         new WooCommerceReader($wooCommerce),
         new TracezillaReader($tracezilla),
-    ))->run($arguments[0]);
+        new LiveChangeWriter(new SkuCreator($tracezilla)),
+    );
+    $result = $runner->run($name, $execute, $limit);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Scenario failed: '.$exception->getMessage()."\n");
     exit(1);
 }
 
 echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
+
+if (anyChangeFailed($result)) {
+    exit(1);
+}
+exit(0);
+
+/** The number in $text if it is a whole number of at least 1, otherwise null. */
+function positiveNumberOrNull(string $text): ?int
+{
+    if (! ctype_digit($text)) {
+        return null;
+    }
+    $number = (int) $text;
+    if ($number < 1) {
+        return null;
+    }
+
+    return $number;
+}
+
+/** @param array<string, mixed> $result */
+function anyChangeFailed(array $result): bool
+{
+    if (! isset($result['changes'])) {
+        return false;
+    }
+    foreach ($result['changes'] as $change) {
+        if ($change['outcome'] === 'failed') {
+            return true;
+        }
+    }
+
+    return false;
+}

@@ -58,11 +58,19 @@ final readonly class WooCommerceReader
         throw new RuntimeException('WooCommerce returned more than '.self::MAX_PAGES." pages for {$path}.");
     }
 
+    /** The store's weight unit: kg, g, lbs, or oz. */
+    public function weightUnit(): string
+    {
+        $setting = $this->client->get('settings/products/woocommerce_weight_unit');
+
+        return $this->text($setting, 'value');
+    }
+
     /**
      * Everything a customer can buy: simple products, and the variations of
      * variable products instead of the variable product itself.
      *
-     * @return list<array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int}>
+     * @return list<array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int, weight: string}>
      */
     public function catalog(): array
     {
@@ -113,7 +121,7 @@ final readonly class WooCommerceReader
 
     /**
      * @param array<string, mixed> $record A product or a variation
-     * @return array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int}
+     * @return array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int, weight: string}
      */
     private function catalogItem(array $record, string $name, int $productId, ?int $variationId): array
     {
@@ -125,6 +133,8 @@ final readonly class WooCommerceReader
             'status' => $this->text($record, 'status'),
             'manage_stock' => $this->isTrue($record, 'manage_stock'),
             'stock_quantity' => $this->wholeNumberOrNull($record, 'stock_quantity'),
+            // In the store's weight unit (see weightUnit()); '' if not set.
+            'weight' => $this->text($record, 'weight'),
         ];
     }
 
