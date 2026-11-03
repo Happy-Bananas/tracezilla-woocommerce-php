@@ -42,7 +42,10 @@ final readonly class WooCommerceReader
     {
         $records = [];
         for ($page = 1; $page <= self::MAX_PAGES; $page++) {
-            $batch = $this->client->get($path, ['per_page' => self::PER_PAGE, 'page' => $page] + $query);
+            $pageQuery = $query;
+            $pageQuery['per_page'] = self::PER_PAGE;
+            $pageQuery['page'] = $page;
+            $batch = $this->client->get($path, $pageQuery);
             if (! array_is_list($batch)) {
                 throw new RuntimeException("WooCommerce response for {$path} is not a list.");
             }
@@ -52,7 +55,7 @@ final readonly class WooCommerceReader
             }
         }
 
-        throw new RuntimeException("WooCommerce returned more than ".self::MAX_PAGES." pages for {$path}.");
+        throw new RuntimeException('WooCommerce returned more than '.self::MAX_PAGES." pages for {$path}.");
     }
 
     /**
@@ -65,30 +68,100 @@ final readonly class WooCommerceReader
     {
         $items = [];
         foreach ($this->getAll('products') as $product) {
-            if (($product['type'] ?? null) !== 'variable') {
-                $items[] = self::item($product, (string) ($product['name'] ?? ''), (int) $product['id'], null);
-                continue;
-            }
-            foreach ($this->getAll("products/{$product['id']}/variations") as $variation) {
-                $name = trim(($product['name'] ?? '').' - '.($variation['name'] ?? ''), ' -');
-                $items[] = self::item($variation, $name, (int) $product['id'], (int) $variation['id']);
+            if ($this->text($product, 'type') === 'variable') {
+                $items = array_merge($items, $this->variationsOf($product));
+            } else {
+                $items[] = $this->catalogItem($product, $this->text($product, 'name'), (int) $product['id'], null);
             }
         }
 
         return $items;
     }
 
-    /** @return array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int} */
-    private static function item(array $record, string $name, int $productId, ?int $variationId): array
+    /**
+     * @param array<string, mixed> $product
+     * @return list<array<string, mixed>>
+     */
+    private function variationsOf(array $product): array
+    {
+        $productId = (int) $product['id'];
+        $items = [];
+        foreach ($this->getAll("products/{$productId}/variations") as $variation) {
+            $name = $this->variationName($product, $variation);
+            $items[] = $this->catalogItem($variation, $name, $productId, (int) $variation['id']);
+        }
+
+        return $items;
+    }
+
+    /**
+     * For example "House Blend Coffee Beans - 250 g".
+     *
+     * @param array<string, mixed> $product
+     * @param array<string, mixed> $variation
+     */
+    private function variationName(array $product, array $variation): string
+    {
+        $productName = $this->text($product, 'name');
+        $variationName = $this->text($variation, 'name');
+        if ($variationName === '') {
+            return $productName;
+        }
+
+        return "{$productName} - {$variationName}";
+    }
+
+    /**
+     * @param array<string, mixed> $record A product or a variation
+     * @return array{sku: string, name: string, product_id: int, variation_id: ?int, status: string, manage_stock: bool, stock_quantity: ?int}
+     */
+    private function catalogItem(array $record, string $name, int $productId, ?int $variationId): array
     {
         return [
-            'sku' => trim((string) ($record['sku'] ?? '')),
+            'sku' => trim($this->text($record, 'sku')),
             'name' => $name,
             'product_id' => $productId,
             'variation_id' => $variationId,
-            'status' => (string) ($record['status'] ?? ''),
-            'manage_stock' => ($record['manage_stock'] ?? false) === true,
-            'stock_quantity' => is_int($record['stock_quantity'] ?? null) ? $record['stock_quantity'] : null,
+            'status' => $this->text($record, 'status'),
+            'manage_stock' => $this->isTrue($record, 'manage_stock'),
+            'stock_quantity' => $this->wholeNumberOrNull($record, 'stock_quantity'),
         ];
+    }
+
+    /**
+     * The value under $key as text, or '' if it is missing.
+     *
+     * @param array<string, mixed> $record
+     */
+    private function text(array $record, string $key): string
+    {
+        if (! isset($record[$key])) {
+            return '';
+        }
+
+        return (string) $record[$key];
+    }
+
+    /** @param array<string, mixed> $record */
+    private function isTrue(array $record, string $key): bool
+    {
+        if (! isset($record[$key])) {
+            return false;
+        }
+
+        return $record[$key] === true;
+    }
+
+    /** @param array<string, mixed> $record */
+    private function wholeNumberOrNull(array $record, string $key): ?int
+    {
+        if (! isset($record[$key])) {
+            return null;
+        }
+        if (! is_int($record[$key])) {
+            return null;
+        }
+
+        return $record[$key];
     }
 }
