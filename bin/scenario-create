@@ -8,25 +8,40 @@ use Tracezilla\WooCommerce\Scenarios\ScenarioGenerator;
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';
 
-$arguments = array_slice($argv, 1);
-if (count($arguments) !== 1 || str_starts_with($arguments[0], '-')) {
-    fwrite(STDERR, "Usage: php bin/bifrost-connect scenario:create <name>\n");
-    fwrite(STDERR, "Example: php bin/bifrost-connect scenario:create confirm-credentials\n");
+$generator = new ScenarioGenerator($project);
+$usage = "Usage: php bin/bifrost-connect scenario:create <name> [--template=<template>]\n"
+    .'Templates: '.implode(', ', $generator->templates()).' (default: '.ScenarioGenerator::DEFAULT_TEMPLATE.")\n"
+    ."Example: php bin/bifrost-connect scenario:create product-check --template=compare-catalogs\n";
+
+$name = null;
+$template = ScenarioGenerator::DEFAULT_TEMPLATE;
+foreach (array_slice($argv, 1) as $argument) {
+    if (str_starts_with($argument, '--template=')) {
+        $template = substr($argument, strlen('--template='));
+    } elseif (! str_starts_with($argument, '-') && $name === null) {
+        $name = $argument;
+    } else {
+        fwrite(STDERR, $usage);
+        exit(2);
+    }
+}
+if ($name === null) {
+    fwrite(STDERR, $usage);
     exit(2);
 }
 
 try {
-    $files = (new ScenarioGenerator($project))->generate($arguments[0]);
+    $files = $generator->generate($name, $template);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Could not create scenario: '.$exception->getMessage()."\n");
     exit(1);
 }
 
-echo "Created scenario '{$arguments[0]}':\n";
+echo "Created scenario '{$name}' from template '{$template}':\n";
 foreach ($files as $file) {
     echo '  '.substr($file, strlen($project) + 1)."\n";
 }
 echo "\nNext, test it and run it:\n";
 echo "  composer test\n";
-echo "  php bin/bifrost-connect scenario:run {$arguments[0]}\n";
+echo "  php bin/bifrost-connect scenario:run {$name}\n";
 echo "\nWith Docker, prefix both with: docker compose run --rm php\n";

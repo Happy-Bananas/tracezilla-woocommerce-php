@@ -11,9 +11,9 @@ final class Client
 {
     private HttpClient $http;
 
-    public function __construct(Configuration $configuration)
+    public function __construct(Configuration $configuration, ?HttpClient $http = null)
     {
-        $this->http = new HttpClient([
+        $this->http = $http ?? new HttpClient([
             'base_uri' => $configuration->wooCommerceUrl.'/wp-json/wc/v3/',
             'auth' => [$configuration->consumerKey, $configuration->consumerSecret],
             'timeout' => $configuration->timeout,

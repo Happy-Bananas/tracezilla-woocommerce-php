@@ -24,25 +24,34 @@ final class ScenarioGeneratorTest extends TestCase
         exec('rm -rf '.escapeshellarg($this->project));
     }
 
-    public function test_it_creates_the_four_scenario_files(): void
+    public function test_it_lists_the_templates(): void
     {
-        $files = (new ScenarioGenerator($this->project))->generate('confirm-credentials');
+        self::assertSame(['compare-catalogs', 'confirm-credentials'], (new ScenarioGenerator($this->project))->templates());
+    }
 
-        $directory = $this->project.'/custom/Scenarios/WooCommerce/ConfirmCredentials';
-        self::assertSame([
-            $directory.'/WooCommerceRequest.php',
-            $directory.'/TracezillaRequest.php',
-            $directory.'/BusinessRules.php',
-            $directory.'/BusinessRulesTest.php',
-        ], $files);
-        self::assertStringContainsString(
-            'namespace Consultant\Scenarios\WooCommerce\ConfirmCredentials;',
-            (string) file_get_contents($directory.'/BusinessRules.php'),
-        );
-        foreach ($files as $file) {
-            exec('php -l '.escapeshellarg($file), $output, $exitCode);
-            self::assertSame(0, $exitCode, "{$file} is not valid PHP");
+    public function test_every_template_creates_three_valid_php_files_in_the_scenario_namespace(): void
+    {
+        $generator = new ScenarioGenerator($this->project);
+        foreach ($generator->templates() as $template) {
+            $files = $generator->generate("from-{$template}", $template);
+
+            $className = str_replace(' ', '', ucwords(str_replace('-', ' ', "from-{$template}")));
+            $directory = $this->project.'/custom/Scenarios/WooCommerce/'.$className;
+            self::assertSame([$directory.'/DataReader.php', $directory.'/BusinessRules.php', $directory.'/BusinessRulesTest.php'], $files);
+            foreach ($files as $file) {
+                self::assertStringContainsString("namespace Consultant\\Scenarios\\WooCommerce\\{$className};", (string) file_get_contents($file));
+                exec('php -l '.escapeshellarg($file), $output, $exitCode);
+                self::assertSame(0, $exitCode, "{$file} is not valid PHP");
+            }
         }
+    }
+
+    public function test_it_rejects_an_unknown_template(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Available templates: compare-catalogs, confirm-credentials');
+
+        (new ScenarioGenerator($this->project))->generate('my-check', 'magic');
     }
 
     public function test_it_refuses_to_replace_an_existing_scenario(): void
