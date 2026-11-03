@@ -24,32 +24,35 @@ final class ScenarioRunnerTest extends TestCase
         exec('rm -rf '.escapeshellarg($this->project));
     }
 
-    public function test_it_runs_the_generated_hello_world_with_both_responses(): void
+    // Each test uses a scenario name no other test uses, because PHP cannot
+    // load a class twice.
+
+    public function test_it_runs_the_hello_world_template(): void
     {
-        // A name no other test uses, because PHP cannot load a class twice.
         (new ScenarioGenerator($this->project))->generate('runner-hello-world');
-        $requests = [];
 
-        $result = (new ScenarioRunner(
-            $this->project,
-            static function (string $path, array $query) use (&$requests): array {
-                $requests[] = ['woocommerce', $path, $query];
+        $result = $this->runner(
+            [['environment' => ['site_url' => 'https://shop.test', 'version' => '11.2.1']]],
+            [['data' => []]],
+        )->run('runner-hello-world');
 
-                return ['environment' => ['site_url' => 'https://shop.example.test', 'version' => '11.2.1']];
-            },
-            static function (string $path, array $query) use (&$requests): array {
-                $requests[] = ['tracezilla', $path, $query];
-
-                return ['data' => []];
-            },
-        ))->run('runner-hello-world');
-
-        self::assertSame([
-            ['woocommerce', 'system_status', []],
-            ['tracezilla', '/skus', ['perPage' => 1]],
-        ], $requests);
         self::assertSame('ok', $result['status']);
-        self::assertSame('https://shop.example.test', $result['woocommerce']['store_url']);
+        self::assertSame('https://shop.test', $result['woocommerce']['store_url']);
+    }
+
+    public function test_it_runs_the_compare_catalogs_template(): void
+    {
+        (new ScenarioGenerator($this->project))->generate('runner-compare', 'compare-catalogs');
+
+        $result = $this->runner(
+            [[['id' => 1, 'type' => 'simple', 'sku' => 'TZ-FRUIT-001', 'name' => 'Bananas'], ['id' => 2, 'type' => 'simple', 'sku' => 'TZ-FRUIT-004', 'name' => 'Kiwi']]],
+            [['data' => [
+                ['id' => 'a', 'sku_code' => 'TZ-FRUIT-001', 'global_name' => 'Bananas 1 kg', 'active' => true],
+                ['id' => 'b', 'sku_code' => 'TZ-RAW-001', 'global_name' => 'Cocoa', 'active' => true],
+            ], 'links' => ['next_page' => null]]],
+        )->run('runner-compare');
+
+        self::assertSame(['matched' => 1, 'only_in_woocommerce' => 1, 'only_in_tracezilla' => 1, 'woocommerce_without_sku' => 0, 'duplicate_skus' => 0, 'inactive_tracezilla_skus_skipped' => 0], $result['summary']);
     }
 
     public function test_it_explains_how_to_create_a_missing_scenario(): void
@@ -57,10 +60,19 @@ final class ScenarioRunnerTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Create it with scenario:create missing-scenario');
 
-        (new ScenarioRunner(
+        $this->runner([], [])->run('missing-scenario');
+    }
+
+    /**
+     * @param list<mixed> $wooCommerce
+     * @param list<mixed> $tracezilla
+     */
+    private function runner(array $wooCommerce, array $tracezilla): ScenarioRunner
+    {
+        return new ScenarioRunner(
             $this->project,
-            static fn (): array => [],
-            static fn (): array => [],
-        ))->run('missing-scenario');
+            FakeApis::wooCommerce($wooCommerce),
+            FakeApis::tracezilla($tracezilla, $this->project.'/var'),
+        );
     }
 }

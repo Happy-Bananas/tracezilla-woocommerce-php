@@ -20,7 +20,7 @@ php bin/bifrost-connect help
 | `connection:check` | Check the WooCommerce and tracezilla connections (read only) |
 | `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
 | `tracezilla:seed` | Create the development test data in tracezilla (dry run by default) |
-| `scenario:create <name>` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
+| `scenario:create <name> [--template=<template>]` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
 | `scenario:run <name>` | Run a scenario (read only) |
 
 Commands that write take a run lock in `var/locks/`, so two scheduled runs
@@ -101,23 +101,26 @@ production team.
 
 ## Scenarios
 
-A scenario is where the customer's own business rules live. Create the
-read-only "hello world" scenario, test it, and run it:
+A scenario is where the customer's own business rules live. Create one from a
+template, test it, and run it:
 
 ```bash
-docker compose run --rm php php bin/bifrost-connect scenario:create confirm-credentials
+docker compose run --rm php php bin/bifrost-connect scenario:create product-check --template=compare-catalogs
 docker compose run --rm php composer test
-docker compose run --rm php php bin/bifrost-connect scenario:run confirm-credentials
+docker compose run --rm php php bin/bifrost-connect scenario:run product-check
 ```
 
-`scenario:create` writes four files to
-`custom/Scenarios/WooCommerce/ConfirmCredentials/`, which belong to the
-consultant:
+| Template | What it does |
+|:--|:--|
+| `confirm-credentials` (default) | Reads the store status and one tracezilla SKU: a hello world |
+| `compare-catalogs` | Compares the WooCommerce catalog with the tracezilla SKUs (read only) |
+
+`scenario:create` copies three files from `templates/scenarios/<template>/` to
+`custom/Scenarios/WooCommerce/<Name>/`. They belong to the developer:
 
 | File | Purpose |
 |:--|:--|
-| `WooCommerceRequest.php` | The WooCommerce REST request to read |
-| `TracezillaRequest.php` | The tracezilla request to read |
+| `DataReader.php` | Reads what the rules need, through read-only WooCommerce and tracezilla readers |
 | `BusinessRules.php` | The customer's decisions, in plain PHP, without API calls |
 | `BusinessRulesTest.php` | Examples of those decisions that run without either API |
 
