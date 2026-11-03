@@ -25,7 +25,16 @@ final class Client
     /** @return array<string, mixed> */
     public function systemStatus(): array
     {
-        $response = $this->http->get('system_status');
+        return $this->get('system_status');
+    }
+
+    /**
+     * @param array<string, scalar> $query
+     * @return array<mixed>
+     */
+    public function get(string $path, array $query = []): array
+    {
+        $response = $this->http->get(ltrim($path, '/'), ['query' => $query]);
 
         return json_decode((string) $response->getBody(), true, flags: JSON_THROW_ON_ERROR);
     }

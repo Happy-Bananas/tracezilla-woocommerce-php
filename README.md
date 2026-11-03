@@ -20,11 +20,13 @@ php bin/bifrost-connect help
 | `connection:check` | Check the WooCommerce and tracezilla connections (read only) |
 | `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
 | `tracezilla:seed` | Create the development test data in tracezilla (dry run by default) |
+| `scenario:create <name>` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
+| `scenario:run <name>` | Run a scenario (read only) |
 
 Commands that write take a run lock in `var/locks/`, so two scheduled runs
 never overlap. A run that finds the lock taken is skipped with exit code `75`
-and the next scheduled run picks up the work. `connection:check` and
-`tracezilla:login` do not take the lock.
+and the next scheduled run picks up the work. `connection:check`,
+`tracezilla:login`, and `scenario:create` do not take the lock.
 
 ## Configure the application
 
@@ -96,6 +98,30 @@ docker compose run --rm php php bin/bifrost-connect tracezilla:seed --execute --
 The seed creates missing partners, locations, SKUs, and received purchase
 orders, and skips records that already exist. Never run it against a
 production team.
+
+## Scenarios
+
+A scenario is where the customer's own business rules live. Create the
+read-only "hello world" scenario, test it, and run it:
+
+```bash
+docker compose run --rm php php bin/bifrost-connect scenario:create confirm-credentials
+docker compose run --rm php composer test
+docker compose run --rm php php bin/bifrost-connect scenario:run confirm-credentials
+```
+
+`scenario:create` writes four files to
+`custom/Scenarios/WooCommerce/ConfirmCredentials/`, which belong to the
+consultant:
+
+| File | Purpose |
+|:--|:--|
+| `WooCommerceRequest.php` | The WooCommerce REST request to read |
+| `TracezillaRequest.php` | The tracezilla request to read |
+| `BusinessRules.php` | The customer's decisions, in plain PHP, without API calls |
+| `BusinessRulesTest.php` | Examples of those decisions that run without either API |
+
+`composer test` also runs the tests in `custom/Scenarios/`.
 
 ## Workflows
 

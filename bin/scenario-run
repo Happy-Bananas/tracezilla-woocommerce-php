@@ -1,0 +1,39 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Dotenv\Dotenv;
+use Tracezilla\WooCommerce\Configuration;
+use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
+use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
+use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
+use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
+use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
+
+$project = dirname(__DIR__);
+require $project.'/vendor/autoload.php';
+Dotenv::createImmutable($project)->safeLoad();
+
+$arguments = array_slice($argv, 1);
+if (count($arguments) !== 1 || str_starts_with($arguments[0], '-')) {
+    fwrite(STDERR, "Usage: php bin/bifrost-connect scenario:run <name>\n");
+    exit(2);
+}
+
+try {
+    $wooCommerce = new WooCommerceClient(Configuration::fromEnvironment());
+    $configuration = TracezillaConfiguration::fromEnvironment($project);
+    $tracezilla = new TracezillaClient($configuration, TokenProvider::fromConfiguration($configuration));
+
+    $result = (new ScenarioRunner(
+        $project,
+        static fn (string $path, array $query): array => $wooCommerce->get($path, $query),
+        static fn (string $path, array $query): array => $tracezilla->get($path, $query),
+    ))->run($arguments[0]);
+} catch (Throwable $exception) {
+    fwrite(STDERR, 'Scenario failed: '.$exception->getMessage()."\n");
+    exit(1);
+}
+
+echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
