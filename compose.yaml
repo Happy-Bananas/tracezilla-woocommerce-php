@@ -1,12 +1,12 @@
-name: tracezilla-woocommerce-integration
-
+# No fixed project name: Compose uses the folder name, so every project
+# created with create-project gets its own containers.
 services:
   php:
     build: .
     # Run as the host user so files written to the mounted project (vendor/,
-    # var/, composer.lock) are not owned by root. Override with UID/GID if your
-    # IDs are not 1000.
-    user: "${UID:-1000}:${GID:-1000}"
+    # var/, composer.lock) are not owned by root. create-project writes these
+    # IDs to .env; without them, 1000 is used.
+    user: "${TRACEZILLA_DOCKER_UID:-1000}:${TRACEZILLA_DOCKER_GID:-1000}"
     working_dir: /app
     env_file:
       - .env
