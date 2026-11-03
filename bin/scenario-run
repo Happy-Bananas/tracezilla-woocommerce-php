@@ -3,6 +3,9 @@
 
 declare(strict_types=1);
 
+// Runs a scenario: its DataReader reads WooCommerce and tracezilla, and its
+// BusinessRules decide the result, which is printed as JSON.
+
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Configuration;
 use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
