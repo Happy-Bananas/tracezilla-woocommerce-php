@@ -39,7 +39,11 @@ final class InMemorySeedGateway implements SeedGateway
 
     public function ownCompany(string $name): array
     {
-        return $this->companies[$name] ?? throw new RuntimeException("No tracezilla partner is named [{$name}].");
+        if (! isset($this->companies[$name])) {
+            throw new RuntimeException("No tracezilla partner is named [{$name}].");
+        }
+
+        return $this->companies[$name];
     }
 
     public function skuCodes(): array

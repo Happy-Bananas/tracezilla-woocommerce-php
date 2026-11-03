@@ -52,9 +52,11 @@ final class FakeApis
     /** @param list<mixed> $answers */
     private static function responses(array $answers): MockHandler
     {
-        return new MockHandler(array_map(
-            static fn (mixed $answer): Response => new Response(200, [], json_encode($answer, JSON_THROW_ON_ERROR)),
-            $answers,
-        ));
+        $responses = [];
+        foreach ($answers as $answer) {
+            $responses[] = new Response(200, [], json_encode($answer, JSON_THROW_ON_ERROR));
+        }
+
+        return new MockHandler($responses);
     }
 }
