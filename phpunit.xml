@@ -3,6 +3,7 @@
     <testsuites>
         <testsuite name="unit">
             <directory>tests/Unit</directory>
+            <directory>custom/Scenarios</directory>
         </testsuite>
     </testsuites>
 </phpunit>

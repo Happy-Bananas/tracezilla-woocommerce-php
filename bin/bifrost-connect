@@ -15,11 +15,13 @@ $commands = [
     'connection:check' => 'check-connection',
     'tracezilla:login' => 'tracezilla-login',
     'tracezilla:seed' => 'seed-tracezilla',
+    'scenario:create' => 'scenario-create',
+    'scenario:run' => 'scenario-run',
 ];
 
 // Every other command takes the integration lock, so scheduled runs never
 // overlap. A run that finds the lock taken is skipped, not queued.
-$unlockedCommands = ['connection:check', 'tracezilla:login'];
+$unlockedCommands = ['connection:check', 'tracezilla:login', 'scenario:create'];
 
 $command = $argv[1] ?? 'help';
 

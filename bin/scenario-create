@@ -1,0 +1,32 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Tracezilla\WooCommerce\Scenarios\ScenarioGenerator;
+
+$project = dirname(__DIR__);
+require $project.'/vendor/autoload.php';
+
+$arguments = array_slice($argv, 1);
+if (count($arguments) !== 1 || str_starts_with($arguments[0], '-')) {
+    fwrite(STDERR, "Usage: php bin/bifrost-connect scenario:create <name>\n");
+    fwrite(STDERR, "Example: php bin/bifrost-connect scenario:create confirm-credentials\n");
+    exit(2);
+}
+
+try {
+    $files = (new ScenarioGenerator($project))->generate($arguments[0]);
+} catch (Throwable $exception) {
+    fwrite(STDERR, 'Could not create scenario: '.$exception->getMessage()."\n");
+    exit(1);
+}
+
+echo "Created scenario '{$arguments[0]}':\n";
+foreach ($files as $file) {
+    echo '  '.substr($file, strlen($project) + 1)."\n";
+}
+echo "\nNext, test it and run it:\n";
+echo "  composer test\n";
+echo "  php bin/bifrost-connect scenario:run {$arguments[0]}\n";
+echo "\nWith Docker, prefix both with: docker compose run --rm php\n";
