@@ -51,7 +51,8 @@ docker compose run --rm php composer install
 
 ## Authenticate with tracezilla
 
-Create an OAuth client in tracezilla (**Settings → My account → API Tokens**)
+Create an OAuth client as described in the
+[tracezilla API documentation](https://tech.tracezilla.com/docs/rest-api-v1/making-requests/authentication.html#bearer-token-and-resource-owner-password-credentials)
 and set `TRACEZILLA_TEAM_SLUG`, `TRACEZILLA_CLIENT_ID`, and
 `TRACEZILLA_CLIENT_SECRET` in `.env`. Then log in once:
 
