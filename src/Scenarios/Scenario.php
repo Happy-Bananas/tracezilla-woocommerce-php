@@ -23,8 +23,19 @@ final readonly class Scenario
             throw new InvalidArgumentException('Scenario name must use lowercase letters, numbers, and single hyphens, for example confirm-credentials.');
         }
 
-        $this->className = str_replace(' ', '', ucwords(str_replace('-', ' ', $slug)));
+        $this->className = self::classNameFrom($slug);
         $this->namespace = 'Consultant\\Scenarios\\WooCommerce\\'.$this->className;
         $this->directory = rtrim($projectDirectory, '/').'/custom/Scenarios/WooCommerce/'.$this->className;
+    }
+
+    /** For example "compare-catalogs" becomes "CompareCatalogs". */
+    private static function classNameFrom(string $slug): string
+    {
+        $className = '';
+        foreach (explode('-', $slug) as $word) {
+            $className .= ucfirst($word);
+        }
+
+        return $className;
     }
 }
