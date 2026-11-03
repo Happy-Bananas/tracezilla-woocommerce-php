@@ -114,6 +114,7 @@ docker compose run --rm php php bin/bifrost-connect scenario:run product-check
 |:--|:--|
 | `confirm-credentials` (default) | Reads the store status and one tracezilla SKU: a hello world |
 | `compare-catalogs` | Compares the WooCommerce catalog with the tracezilla SKUs (read only) |
+| `missing-in-woocommerce` | Lists tracezilla SKUs the shop does not sell, to decide on with the customer (read only) |
 
 `scenario:create` copies three files from `templates/scenarios/<template>/` to
 `custom/Scenarios/WooCommerce/<Name>/`. They belong to the developer:

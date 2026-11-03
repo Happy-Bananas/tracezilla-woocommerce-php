@@ -42,7 +42,7 @@ final readonly class TracezillaReader
     /**
      * All SKUs, active and inactive, sorted by SKU code.
      *
-     * @return list<array{id: string, sku_code: string, name: string, active: bool}>
+     * @return list<array{id: string, sku_code: string, name: string, active: bool, category: string, allow_sales: bool}>
      */
     public function skus(): array
     {
@@ -51,6 +51,9 @@ final readonly class TracezillaReader
             'sku_code' => trim((string) ($sku['sku_code'] ?? '')),
             'name' => (string) ($sku['global_name'] ?? ''),
             'active' => ($sku['active'] ?? false) === true,
+            // For example finished_good or raw_material.
+            'category' => (string) ($sku['category'] ?? ''),
+            'allow_sales' => ($sku['allow_sales'] ?? false) === true,
         ], $this->getAll('/skus', ['sortBy' => 'sku_code', 'sortDirection' => 'asc', 'perPage' => 250]));
     }
 }

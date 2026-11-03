@@ -55,6 +55,23 @@ final class ScenarioRunnerTest extends TestCase
         self::assertSame(['matched' => 1, 'only_in_woocommerce' => 1, 'only_in_tracezilla' => 1, 'woocommerce_without_sku' => 0, 'duplicate_skus' => 0, 'inactive_tracezilla_skus_skipped' => 0], $result['summary']);
     }
 
+    public function test_it_runs_the_missing_in_woocommerce_template(): void
+    {
+        (new ScenarioGenerator($this->project))->generate('runner-missing', 'missing-in-woocommerce');
+
+        $result = $this->runner(
+            [[['id' => 1, 'type' => 'simple', 'sku' => 'TZ-FRUIT-001', 'name' => 'Bananas']]],
+            [['data' => [
+                ['id' => 'a', 'sku_code' => 'TZ-FRUIT-001', 'global_name' => 'Bananas', 'active' => true, 'category' => 'finished_good', 'allow_sales' => true],
+                ['id' => 'b', 'sku_code' => 'TZ-JAM-001', 'global_name' => 'Jam', 'active' => true, 'category' => 'finished_good', 'allow_sales' => true],
+                ['id' => 'c', 'sku_code' => 'TZ-RAW-001', 'global_name' => 'Cocoa', 'active' => true, 'category' => 'raw_material', 'allow_sales' => true],
+            ], 'links' => ['next_page' => null]]],
+        )->run('runner-missing');
+
+        self::assertSame(['decide_with_customer' => 1, 'not_for_the_shop' => 1, 'inactive_tracezilla_skus_skipped' => 0], $result['summary']);
+        self::assertSame('TZ-JAM-001', $result['decide_with_customer'][0]['sku']);
+    }
+
     public function test_it_explains_how_to_create_a_missing_scenario(): void
     {
         $this->expectException(RuntimeException::class);

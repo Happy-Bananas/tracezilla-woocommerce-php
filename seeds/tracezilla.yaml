@@ -154,6 +154,17 @@ skus:
     weight_factor_net: 1
     weight_factor_gross: 1.02
 
+  # Exists only in tracezilla, but could be sold: the shop's decision list
+  # (missing-in-woocommerce template) has one product to decide on.
+  - sku_code: TZ-GIFT-001
+    global_name: Gourmet Gift Box
+    category: finished_good
+    unit_of_measure: pcs
+    lot_unit: pcs
+    default_uom_conversion: 1
+    weight_factor_net: 1.5
+    weight_factor_gross: 1.8
+
 # Received purchase orders put stock into the warehouse. Quantities differ from
 # WooCommerce on purpose, so inventory synchronization has updates to report.
 # TZ-FRUIT-003 is never received and stays at zero.
