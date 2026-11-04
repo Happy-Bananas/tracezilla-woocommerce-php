@@ -19,9 +19,9 @@ php bin/bifrost-connect help
 |:--|:--|
 | `connection:check` | Check the WooCommerce and tracezilla connections (read only) |
 | `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
-| `tracezilla:seed` | Create the development test data in tracezilla (dry run by default) |
+| `tracezilla:seed` | Create the development test data in tracezilla (`--dry-run` or `--execute --confirm`) |
 | `scenario:create <name> [--template=<template>]` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
-| `scenario:run <name> [--execute --confirm] [--limit=<n>]` | Run a scenario; changes it plans are written only with `--execute --confirm` |
+| `scenario:run <name> [--dry-run \| --execute --confirm] [--limit=<n>]` | Run a scenario; one that plans changes needs `--dry-run` or `--execute --confirm` |
 
 Commands that write take a run lock in `var/locks/`, so two scheduled runs
 never overlap. A run that finds the lock taken is skipped with exit code `75`
@@ -91,7 +91,7 @@ Set `TRACEZILLA_OWN_COMPANY` to your company's partner name in tracezilla.
 Then preview and apply `seeds/tracezilla.yaml`:
 
 ```bash
-docker compose run --rm php php bin/bifrost-connect tracezilla:seed
+docker compose run --rm php php bin/bifrost-connect tracezilla:seed --dry-run
 docker compose run --rm php php bin/bifrost-connect tracezilla:seed --execute --confirm
 ```
 
