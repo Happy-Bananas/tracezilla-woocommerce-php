@@ -18,15 +18,8 @@ final class BifrostConnectTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->runtimeDirectory.'/locks/*') ?: [] as $file) {
-            unlink($file);
-        }
-        if (is_dir($this->runtimeDirectory.'/locks')) {
-            rmdir($this->runtimeDirectory.'/locks');
-        }
-        if (is_dir($this->runtimeDirectory)) {
-            rmdir($this->runtimeDirectory);
-        }
+        // Removes the vendor link in the test project, not the real vendor folder.
+        exec('rm -rf '.escapeshellarg($this->runtimeDirectory));
     }
 
     public function test_help_lists_the_commands(): void
@@ -35,7 +28,24 @@ final class BifrostConnectTest extends TestCase
 
         self::assertSame(0, $exitCode);
         self::assertStringContainsString('connection:check', $output);
-        self::assertStringContainsString('tracezilla:seed', $output);
+        self::assertStringContainsString('scenario:run', $output);
+    }
+
+    public function test_a_command_left_out_of_the_project_is_not_offered(): void
+    {
+        $project = $this->runtimeDirectory.'/project-without-seed';
+        mkdir($project.'/bin', 0777, true);
+        copy(dirname(__DIR__, 2).'/bin/bifrost-connect', $project.'/bin/bifrost-connect');
+        copy(dirname(__DIR__, 2).'/bin/check-connection', $project.'/bin/check-connection');
+        symlink(dirname(__DIR__, 2).'/vendor', $project.'/vendor');
+
+        [, $help] = $this->bifrostConnectIn($project, 'help');
+        [$exitCode, , $errors] = $this->bifrostConnectIn($project, 'tracezilla:seed', '--dry-run');
+
+        self::assertStringContainsString('connection:check', $help);
+        self::assertStringNotContainsString('tracezilla:seed', $help);
+        self::assertSame(2, $exitCode);
+        self::assertStringContainsString('Unknown command: tracezilla:seed', $errors);
     }
 
     public function test_an_unknown_command_is_rejected(): void
@@ -48,22 +58,28 @@ final class BifrostConnectTest extends TestCase
 
     public function test_a_locked_command_is_skipped_while_another_run_holds_the_lock(): void
     {
-        $lock = (new FileIntegrationLock($this->runtimeDirectory))->acquire('integration', ['command' => 'tracezilla:seed']);
+        $lock = (new FileIntegrationLock($this->runtimeDirectory))->acquire('integration', ['command' => 'scenario:run']);
         self::assertNotNull($lock);
 
-        [$exitCode, $output, $errors] = $this->bifrostConnect('tracezilla:seed');
+        [$exitCode, $output, $errors] = $this->bifrostConnect('scenario:run', 'compare');
         $lock->release();
 
         self::assertSame(75, $exitCode);
         self::assertSame('', $output);
         self::assertStringContainsString('Another integration command is already running.', $errors);
-        self::assertStringContainsString('Command: tracezilla:seed', $errors);
+        self::assertStringContainsString('Command: scenario:run', $errors);
     }
 
     /** @return array{int, string, string} */
     private function bifrostConnect(string ...$arguments): array
     {
-        $command = array_merge([PHP_BINARY, dirname(__DIR__, 2).'/bin/bifrost-connect'], $arguments);
+        return $this->bifrostConnectIn(dirname(__DIR__, 2), ...$arguments);
+    }
+
+    /** @return array{int, string, string} */
+    private function bifrostConnectIn(string $project, string ...$arguments): array
+    {
+        $command = array_merge([PHP_BINARY, $project.'/bin/bifrost-connect'], $arguments);
         $environment = getenv();
         $environment['TRACEZILLA_RUNTIME_DIR'] = $this->runtimeDirectory;
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $environment);
