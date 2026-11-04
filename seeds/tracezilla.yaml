@@ -1,8 +1,9 @@
-# tracezilla development data. Seeds tracezilla only; the matching WooCommerce
-# products come from tracezilla-woocommerce-sandbox.
+# tracezilla development data. Seeds tracezilla only; the matching shop products
+# come from the platform's sandbox or development store.
 #
-# Apply it with:
-#   docker compose run --rm php php bin/bifrost-connect tracezilla:seed seeds/tracezilla.yaml
+# Preview and apply it with:
+#   php bin/bifrost-connect tracezilla:seed --dry-run
+#   php bin/bifrost-connect tracezilla:seed --execute --confirm
 #
 # Field names below the identity keys are passed to the tracezilla API
 # unchanged, so any field from https://app.tracezilla.com/api/documentation
@@ -75,8 +76,8 @@ partners:
         country: DK
 
 # Matched SKUs cover every product used by the sandbox orders. The rest of the
-# WooCommerce catalog (e.g. TZ-FRUIT-004) is deliberately missing, so the
-# "create missing SKUs" workflow has something to do.
+# shop's catalog (e.g. TZ-FRUIT-004) is deliberately missing, so creating the
+# missing SKUs has something to do.
 skus:
   - sku_code: TZ-FRUIT-001
     global_name: Fairtrade Bananas 1 kg
@@ -105,7 +106,7 @@ skus:
     weight_factor_net: 0.4
     weight_factor_gross: 0.42
 
-  # Variations of the WooCommerce product TZ-COFFEE-001.
+  # Variations of the shop product TZ-COFFEE-001.
   - sku_code: TZ-COFFEE-001-01
     global_name: House Blend Coffee Beans 250 g
     category: finished_good
@@ -154,8 +155,8 @@ skus:
     weight_factor_net: 1
     weight_factor_gross: 1.02
 
-  # Exists only in tracezilla, but could be sold: the shop's decision list
-  # (missing-in-woocommerce template) has one product to decide on.
+  # Exists only in tracezilla, but could be sold: the list of products to decide
+  # on with the customer has one entry.
   - sku_code: TZ-GIFT-001
     global_name: Gourmet Gift Box
     category: finished_good
@@ -166,7 +167,7 @@ skus:
     weight_factor_gross: 1.8
 
 # Received purchase orders put stock into the warehouse. Quantities differ from
-# WooCommerce on purpose, so inventory synchronization has updates to report.
+# the shop on purpose, so inventory synchronization has updates to report.
 # TZ-FRUIT-003 is never received and stays at zero.
 purchase_orders:
   - ext_ref: TZ-STOCK-001
