@@ -1,154 +1,25 @@
-# tracezilla-woocommerce-php
+# tracezilla WooCommerce integration
 
-A framework-neutral PHP console application for integrating WooCommerce with
-the tracezilla API. It is designed to run locally, from cron, or as a scheduled
-container without being installed as a WordPress plugin.
+A [BifrostConnect](https://happy-bananas.github.io/tracezilla-integrations-docs/) template for building an integration between WooCommerce and
+tracezilla for a tracezilla customer. You write the customer's business rules
+in PHP, test them on your computer, and run the integration on your own server
+from cron.
 
-The separate `tracezilla-woocommerce-sandbox` project provides a disposable
-WordPress store containing deterministic development data.
+Don't clone this repository to start a customer project. Create the project
+with the create command described in
+[Getting Started](https://happy-bananas.github.io/tracezilla-integrations-docs/getting-started.html): it gives you a plain folder with no
+connection to this public repository.
 
-## Commands
+## Documentation
 
-Every command runs through one entry point:
+Everything you need is in the [BifrostConnect manual](https://happy-bananas.github.io/tracezilla-integrations-docs/):
 
-```bash
-php bin/bifrost-connect help
-```
+- [Getting Started](https://happy-bananas.github.io/tracezilla-integrations-docs/getting-started.html): set up your development
+  environment, create the project, and check the connections.
+- [WooCommerce](https://happy-bananas.github.io/tracezilla-integrations-docs/woocommerce/): prerequisites, installation, and the available commands.
+- [Deployment](https://happy-bananas.github.io/tracezilla-integrations-docs/deployment.html) and
+  [Troubleshooting](https://happy-bananas.github.io/tracezilla-integrations-docs/troubleshooting.html).
 
-| Command | Purpose |
-|:--|:--|
-| `connection:check` | Check the WooCommerce and tracezilla connections (read only) |
-| `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
-| `tracezilla:seed` | Create the development test data in tracezilla (`--dry-run` or `--execute`) |
-| `scenario:create <name> [--template=<template>]` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
-| `scenario:run <name> [--dry-run \| --execute] [--limit=<n>]` | Run a scenario; one that plans changes needs `--dry-run` or `--execute` |
+## License
 
-Commands that write take a run lock in `var/locks/`, so two scheduled runs
-never overlap. A run that finds the lock taken is skipped with exit code `75`
-and the next scheduled run picks up the work. `connection:check`,
-`tracezilla:login`, and `scenario:create` do not take the lock.
-
-## Configure the application
-
-```bash
-cp .env.example .env
-```
-
-Set the WooCommerce URL, REST API consumer key, and consumer secret in `.env`.
-For the local sandbox, retain:
-
-```dotenv
-WOOCOMMERCE_URL=http://host.docker.internal:8080
-```
-
-Never commit `.env` or API credentials.
-
-## Run with Docker
-
-Install the pinned PHP dependencies:
-
-```bash
-docker compose run --rm php composer install
-```
-
-## Authenticate with tracezilla
-
-Create an OAuth client as described in the
-[tracezilla API documentation](https://tech.tracezilla.com/docs/rest-api-v1/making-requests/authentication.html#bearer-token-and-resource-owner-password-credentials)
-and set `TRACEZILLA_TEAM_SLUG`, `TRACEZILLA_CLIENT_ID`, and
-`TRACEZILLA_CLIENT_SECRET` in `.env`. Then log in once:
-
-```bash
-docker compose run --rm php php bin/bifrost-connect tracezilla:login
-```
-
-The password is not stored. Tokens are saved in `var/tracezilla-token.json`
-and renewed automatically 30 days before they expire, so scheduled commands
-keep working. Keep the `var/` directory between runs and out of Git.
-
-## Check the connections
-
-Check the WooCommerce and tracezilla credentials with one read-only request
-each. Nothing else works until this passes:
-
-```bash
-./check-connection
-./check-connection --json
-```
-
-The helper builds the container and installs the PHP packages when needed, then
-runs `bin/bifrost-connect connection:check`. Without Docker, run
-`php bin/bifrost-connect connection:check`.
-With the local sandbox, the WooCommerce values in `.env.example` work as they
-are.
-
-Both systems are always checked, so a problem with one does not hide the state
-of the other. The command exits with `0` only when both connections work.
-
-## Seed tracezilla development data
-
-Set `TRACEZILLA_OWN_COMPANY` to your company's partner name in tracezilla.
-Then preview and apply `seeds/tracezilla.yaml`:
-
-```bash
-docker compose run --rm php php bin/bifrost-connect tracezilla:seed --dry-run
-docker compose run --rm php php bin/bifrost-connect tracezilla:seed --execute
-```
-
-The seed creates missing partners, locations, SKUs, and received purchase
-orders, and skips records that already exist. Never run it against a
-production team.
-
-## Scenarios
-
-A scenario is where the customer's own business rules live. Create one from a
-template, test it, and run it:
-
-```bash
-docker compose run --rm php php bin/bifrost-connect scenario:create product-check --template=compare-catalogs
-docker compose run --rm php composer test
-docker compose run --rm php php bin/bifrost-connect scenario:run product-check
-```
-
-| Template | What it does |
-|:--|:--|
-| `confirm-credentials` (default) | Reads the store status and one tracezilla SKU: a hello world |
-| `compare-catalogs` | Compares the WooCommerce catalog with the tracezilla SKUs (read only) |
-| `missing-in-woocommerce` | Lists tracezilla SKUs the shop does not sell, to decide on with the customer (read only) |
-| `create-tracezilla-skus` | Creates tracezilla SKUs for the products the shop sells (writes with `--execute`) |
-
-`scenario:create` copies three files from `templates/scenarios/<template>/` to
-`custom/Scenarios/WooCommerce/<Name>/`. They belong to the developer:
-
-| File | Purpose |
-|:--|:--|
-| `DataReader.php` | Reads what the rules need, through read-only WooCommerce and tracezilla readers |
-| `BusinessRules.php` | The customer's decisions, in plain PHP, without API calls |
-| `BusinessRulesTest.php` | Examples of those decisions that run without either API |
-
-`composer test` also runs the tests in `custom/Scenarios/`.
-
-## Workflows
-
-The commands use ordinary PHP and Composer, following the same structure as
-the Shopify PHP examples. Each command is a script in `bin/`, registered in
-`bin/bifrost-connect`. Additional catalog, order, and inventory workflows will
-be added the same way.
-
-## Run from cron
-
-Production commands can use the same image. For example, a five-minute order
-schedule will have this shape once the order command is implemented:
-
-```cron
-*/5 * * * * cd /opt/tracezilla-woocommerce-php && docker compose run --rm php php bin/bifrost-connect orders:import
-```
-
-The run lock prevents overlapping runs. Workflows must also be idempotent, so
-a run that is repeated or skipped never creates duplicates.
-
-## Run the tests
-
-```bash
-docker compose run --rm php composer test
-```
+This project is available under the [MIT License](./LICENSE).
