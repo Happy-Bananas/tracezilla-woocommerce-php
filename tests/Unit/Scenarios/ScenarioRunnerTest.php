@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Tracezilla\WooCommerce\Scenarios\ScenarioGenerator;
 use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
+use Tracezilla\WooCommerce\WriteMode;
 
 final class ScenarioRunnerTest extends TestCase
 {
@@ -85,7 +86,7 @@ final class ScenarioRunnerTest extends TestCase
         $writer = new FakeChangeWriter();
         (new ScenarioGenerator($this->project))->generate('runner-dry-run', 'create-tracezilla-skus');
 
-        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-dry-run');
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-dry-run', WriteMode::dryRun());
 
         self::assertSame('dry_run', $result['mode']);
         self::assertSame(['planned', 'planned'], array_column($result['changes'], 'outcome'));
@@ -97,7 +98,7 @@ final class ScenarioRunnerTest extends TestCase
         $writer = new FakeChangeWriter();
         (new ScenarioGenerator($this->project))->generate('runner-execute', 'create-tracezilla-skus');
 
-        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-execute', execute: true, limit: 1);
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-execute', WriteMode::execute(), limit: 1);
 
         self::assertSame('execute', $result['mode']);
         self::assertSame(['done', 'skipped_by_limit'], array_column($result['changes'], 'outcome'));
@@ -109,10 +110,25 @@ final class ScenarioRunnerTest extends TestCase
         $writer = new FakeChangeWriter(failForKey: 'TZ-FRUIT-004');
         (new ScenarioGenerator($this->project))->generate('runner-failure', 'create-tracezilla-skus');
 
-        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-failure', execute: true);
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-failure', WriteMode::execute());
 
         self::assertSame(['failed', 'done'], array_column($result['changes'], 'outcome'));
         self::assertSame('tracezilla rejected TZ-FRUIT-004.', $result['changes'][0]['error']);
+    }
+
+    public function test_a_scenario_that_plans_changes_needs_a_mode(): void
+    {
+        $writer = new FakeChangeWriter();
+        (new ScenarioGenerator($this->project))->generate('runner-no-mode', 'create-tracezilla-skus');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('This scenario plans changes. Choose a mode');
+
+        try {
+            $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-no-mode');
+        } finally {
+            self::assertSame([], $writer->written);
+        }
     }
 
     /** @return list<mixed> The fake WooCommerce answers: the catalog, then the weight unit */

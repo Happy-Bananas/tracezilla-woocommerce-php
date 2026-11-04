@@ -6,13 +6,14 @@ namespace Tracezilla\WooCommerce\Scenarios;
 
 use RuntimeException;
 use Throwable;
+use Tracezilla\WooCommerce\WriteMode;
 
 /**
  * Runs a scenario: its DataReader reads what the rules need, its BusinessRules
  * decide the result, and the changes the rules planned are carried out.
  *
- * Changes are only written when the run is executed. Otherwise the run is a
- * dry run that reports each change as "planned".
+ * A scenario that plans changes needs a mode: a dry run reports each change as
+ * "planned", an executed run writes them. A read-only scenario needs no mode.
  */
 final readonly class ScenarioRunner
 {
@@ -25,19 +26,23 @@ final readonly class ScenarioRunner
     }
 
     /**
-     * @param bool $execute Write the planned changes; otherwise only report them
+     * @param WriteMode|null $mode Dry run or execute; null when no mode was chosen
      * @param int|null $limit Write at most this many changes; null means all
      * @return array<string, mixed>
      */
-    public function run(string $slug, bool $execute = false, ?int $limit = null): array
+    public function run(string $slug, ?WriteMode $mode = null, ?int $limit = null): array
     {
+        if ($mode === null) {
+            $mode = WriteMode::notChosen();
+        }
+
         $scenario = new Scenario($this->projectDirectory, $slug);
         $this->loadScenarioFiles($scenario);
 
         $data = $this->readData($scenario);
         $result = $this->applyRules($scenario, $data);
 
-        return $this->carryOutChanges($result, $execute, $limit);
+        return $this->carryOutChanges($result, $mode, $limit);
     }
 
     private function loadScenarioFiles(Scenario $scenario): void
@@ -78,11 +83,15 @@ final readonly class ScenarioRunner
      * @param array<string, mixed> $result
      * @return array<string, mixed>
      */
-    private function carryOutChanges(array $result, bool $execute, ?int $limit): array
+    private function carryOutChanges(array $result, WriteMode $mode, ?int $limit): array
     {
         if (! isset($result['changes'])) {
             return $result;
         }
+        if (! $mode->isChosen()) {
+            throw new RuntimeException('This scenario plans changes. '.WriteMode::CHOOSE_A_MODE.' Nothing was written.');
+        }
+        $execute = $mode->writes();
 
         $outcomes = [];
         foreach ($result['changes'] as $index => $change) {

@@ -18,25 +18,31 @@ use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
 use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
+use Tracezilla\WooCommerce\WriteMode;
 
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';
 Dotenv::createImmutable($project)->safeLoad();
 
 $usage = <<<'TEXT'
-    Usage: php bin/bifrost-connect scenario:run <name> [--execute --confirm] [--limit=<number>]
+    Usage: php bin/bifrost-connect scenario:run <name> [--dry-run | --execute --confirm] [--limit=<number>]
 
-    Without --execute --confirm nothing is written: the changes the scenario
-    plans are only reported (dry run). --limit writes at most that many changes.
+    A scenario that plans changes needs a mode:
+      --dry-run              Report the planned changes. Nothing is written.
+      --execute --confirm    Write the planned changes.
+    --limit writes at most that many changes. A read-only scenario needs no mode.
 
     TEXT;
 
 $name = null;
+$dryRun = false;
 $execute = false;
 $confirm = false;
 $limit = null;
 foreach (array_slice($argv, 1) as $argument) {
-    if ($argument === '--execute') {
+    if ($argument === '--dry-run') {
+        $dryRun = true;
+    } elseif ($argument === '--execute') {
         $execute = true;
     } elseif ($argument === '--confirm') {
         $confirm = true;
@@ -57,8 +63,10 @@ if ($name === null) {
     fwrite(STDERR, $usage);
     exit(2);
 }
-if ($execute !== $confirm) {
-    fwrite(STDERR, "Writing requires both --execute and --confirm. Nothing was written.\n");
+try {
+    $mode = WriteMode::fromOptions($dryRun, $execute, $confirm);
+} catch (InvalidArgumentException $exception) {
+    fwrite(STDERR, $exception->getMessage()."\n");
     exit(2);
 }
 
@@ -73,7 +81,7 @@ try {
         new TracezillaReader($tracezilla),
         new LiveChangeWriter(new SkuCreator($tracezilla)),
     );
-    $result = $runner->run($name, $execute, $limit);
+    $result = $runner->run($name, $mode, $limit);
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Scenario failed: '.$exception->getMessage()."\n");
     exit(1);
