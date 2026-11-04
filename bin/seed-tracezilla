@@ -18,7 +18,7 @@ require dirname(__DIR__).'/vendor/autoload.php';
 Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
 
 $usage = <<<'TEXT'
-    Usage: php bin/bifrost-connect tracezilla:seed [<seed-file>] (--dry-run | --execute --confirm)
+    Usage: php bin/bifrost-connect tracezilla:seed [<seed-file>] (--dry-run | --execute)
 
     Creates the partners, locations, SKUs and purchase orders described in the
     seed file in the tracezilla team from .env. Existing records are skipped.
@@ -26,7 +26,7 @@ $usage = <<<'TEXT'
     TRACEZILLA_OWN_COMPANY.
 
       --dry-run              Show what would be created. Nothing is written.
-      --execute --confirm    Create the missing records.
+      --execute              Create the missing records.
 
     Default seed file: seeds/tracezilla.yaml
 
@@ -40,15 +40,12 @@ if (in_array('--help', $arguments, true) || in_array('-h', $arguments, true)) {
 
 $dryRun = false;
 $execute = false;
-$confirm = false;
 $files = [];
 foreach ($arguments as $argument) {
     if ($argument === '--dry-run') {
         $dryRun = true;
     } elseif ($argument === '--execute') {
         $execute = true;
-    } elseif ($argument === '--confirm') {
-        $confirm = true;
     } elseif (str_starts_with($argument, '--')) {
         fwrite(STDERR, $usage);
         exit(2);
@@ -62,7 +59,7 @@ if (count($files) > 1) {
 }
 
 try {
-    $mode = WriteMode::fromOptions($dryRun, $execute, $confirm);
+    $mode = WriteMode::fromOptions($dryRun, $execute);
 } catch (InvalidArgumentException $exception) {
     fwrite(STDERR, $exception->getMessage()."\n");
     exit(2);
@@ -133,6 +130,6 @@ function printResult(SeedResult $result, bool $execute): void
 
     $wouldCreateSomething = isset($counts[SeedResult::WOULD_CREATE]);
     if (! $execute && $wouldCreateSomething) {
-        echo "\nDry run only. Re-run with --execute --confirm instead of --dry-run to write.\n";
+        echo "\nDry run only. Re-run with --execute instead of --dry-run to write.\n";
     }
 }

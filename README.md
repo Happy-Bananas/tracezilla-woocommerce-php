@@ -19,9 +19,9 @@ php bin/bifrost-connect help
 |:--|:--|
 | `connection:check` | Check the WooCommerce and tracezilla connections (read only) |
 | `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
-| `tracezilla:seed` | Create the development test data in tracezilla (`--dry-run` or `--execute --confirm`) |
+| `tracezilla:seed` | Create the development test data in tracezilla (`--dry-run` or `--execute`) |
 | `scenario:create <name> [--template=<template>]` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
-| `scenario:run <name> [--dry-run \| --execute --confirm] [--limit=<n>]` | Run a scenario; one that plans changes needs `--dry-run` or `--execute --confirm` |
+| `scenario:run <name> [--dry-run \| --execute] [--limit=<n>]` | Run a scenario; one that plans changes needs `--dry-run` or `--execute` |
 
 Commands that write take a run lock in `var/locks/`, so two scheduled runs
 never overlap. A run that finds the lock taken is skipped with exit code `75`
@@ -92,7 +92,7 @@ Then preview and apply `seeds/tracezilla.yaml`:
 
 ```bash
 docker compose run --rm php php bin/bifrost-connect tracezilla:seed --dry-run
-docker compose run --rm php php bin/bifrost-connect tracezilla:seed --execute --confirm
+docker compose run --rm php php bin/bifrost-connect tracezilla:seed --execute
 ```
 
 The seed creates missing partners, locations, SKUs, and received purchase
@@ -115,7 +115,7 @@ docker compose run --rm php php bin/bifrost-connect scenario:run product-check
 | `confirm-credentials` (default) | Reads the store status and one tracezilla SKU: a hello world |
 | `compare-catalogs` | Compares the WooCommerce catalog with the tracezilla SKUs (read only) |
 | `missing-in-woocommerce` | Lists tracezilla SKUs the shop does not sell, to decide on with the customer (read only) |
-| `create-tracezilla-skus` | Creates tracezilla SKUs for the products the shop sells (writes with `--execute --confirm`) |
+| `create-tracezilla-skus` | Creates tracezilla SKUs for the products the shop sells (writes with `--execute`) |
 
 `scenario:create` copies three files from `templates/scenarios/<template>/` to
 `custom/Scenarios/WooCommerce/<Name>/`. They belong to the developer:

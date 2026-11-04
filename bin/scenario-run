@@ -5,7 +5,7 @@ declare(strict_types=1);
 
 // Runs a scenario: its DataReader reads WooCommerce and tracezilla, its
 // BusinessRules decide the result, and the changes the rules planned are
-// written only with --execute --confirm. The result is printed as JSON.
+// written only with --execute. The result is printed as JSON.
 
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Configuration;
@@ -25,11 +25,11 @@ require $project.'/vendor/autoload.php';
 Dotenv::createImmutable($project)->safeLoad();
 
 $usage = <<<'TEXT'
-    Usage: php bin/bifrost-connect scenario:run <name> [--dry-run | --execute --confirm] [--limit=<number>]
+    Usage: php bin/bifrost-connect scenario:run <name> [--dry-run | --execute] [--limit=<number>]
 
     A scenario that plans changes needs a mode:
       --dry-run              Report the planned changes. Nothing is written.
-      --execute --confirm    Write the planned changes.
+      --execute              Write the planned changes.
     --limit writes at most that many changes. A read-only scenario needs no mode.
 
     TEXT;
@@ -37,15 +37,12 @@ $usage = <<<'TEXT'
 $name = null;
 $dryRun = false;
 $execute = false;
-$confirm = false;
 $limit = null;
 foreach (array_slice($argv, 1) as $argument) {
     if ($argument === '--dry-run') {
         $dryRun = true;
     } elseif ($argument === '--execute') {
         $execute = true;
-    } elseif ($argument === '--confirm') {
-        $confirm = true;
     } elseif (str_starts_with($argument, '--limit=')) {
         $limit = positiveNumberOrNull(substr($argument, strlen('--limit=')));
         if ($limit === null) {
@@ -64,7 +61,7 @@ if ($name === null) {
     exit(2);
 }
 try {
-    $mode = WriteMode::fromOptions($dryRun, $execute, $confirm);
+    $mode = WriteMode::fromOptions($dryRun, $execute);
 } catch (InvalidArgumentException $exception) {
     fwrite(STDERR, $exception->getMessage()."\n");
     exit(2);
