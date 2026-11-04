@@ -7,7 +7,7 @@ namespace Consultant\Scenarios\WooCommerce\ScenarioTemplate;
 /**
  * Plans a tracezilla SKU for every product the shop sells that tracezilla does
  * not know yet. It only plans: the changes are written by scenario:run, and only
- * with --execute --confirm.
+ * with --execute.
  *
  * The rules to agree with the customer are marked RULE. Change them here and
  * in BusinessRulesTest.php.

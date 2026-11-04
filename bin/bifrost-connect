@@ -23,6 +23,9 @@ $commands = [
     'scenario:create' => 'scenario-create',
     'scenario:run' => 'scenario-run',
 ];
+// A project can leave out optional commands, such as the seed. Only commands
+// whose script is in bin/ are offered.
+$commands = installedCommands($commands);
 
 // These commands may run while another command holds the integration lock.
 // Every other command takes the lock, so scheduled runs never overlap; a run
@@ -63,6 +66,24 @@ if ($lock !== null) {
 }
 exit($exitCode);
 
+/**
+ * The commands whose script exists in bin/.
+ *
+ * @param array<string, string> $commands Command name => script name
+ * @return array<string, string>
+ */
+function installedCommands(array $commands): array
+{
+    $installed = [];
+    foreach ($commands as $name => $script) {
+        if (is_file(__DIR__.DIRECTORY_SEPARATOR.$script)) {
+            $installed[$name] = $script;
+        }
+    }
+
+    return $installed;
+}
+
 /** @param list<string> $commandNames */
 function printHelp(array $commandNames): void
 {
@@ -74,7 +95,7 @@ function printHelp(array $commandNames): void
         echo "  {$name}\n";
     }
     echo "\nRun a command with its options, for example:\n";
-    echo "  php bin/bifrost-connect tracezilla:seed --help\n";
+    echo "  php bin/bifrost-connect connection:check --json\n";
 }
 
 /**

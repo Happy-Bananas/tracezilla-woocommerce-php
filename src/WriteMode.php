@@ -8,24 +8,21 @@ use InvalidArgumentException;
 
 /**
  * Whether a command that can change data only previews (--dry-run) or writes
- * (--execute --confirm). The developer has to choose one explicitly.
+ * (--execute). The developer has to choose one explicitly.
  */
 final readonly class WriteMode
 {
-    public const CHOOSE_A_MODE = 'Choose a mode: --dry-run to preview, or --execute --confirm to write.';
+    public const CHOOSE_A_MODE = 'Choose a mode: --dry-run to preview, or --execute to write.';
 
     private function __construct(private string $mode)
     {
     }
 
     /** Build the mode from the command's options; contradictory options are refused. */
-    public static function fromOptions(bool $dryRun, bool $execute, bool $confirm): self
+    public static function fromOptions(bool $dryRun, bool $execute): self
     {
         if ($dryRun && $execute) {
-            throw new InvalidArgumentException('Use either --dry-run or --execute --confirm, not both.');
-        }
-        if ($execute !== $confirm) {
-            throw new InvalidArgumentException('Writing requires both --execute and --confirm. Nothing was written.');
+            throw new InvalidArgumentException('Use either --dry-run or --execute, not both.');
         }
 
         if ($execute) {
