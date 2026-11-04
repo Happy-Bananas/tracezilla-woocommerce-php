@@ -12,7 +12,9 @@ use Tracezilla\WooCommerce\RuntimeDirectory;
 
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';
-Dotenv::createImmutable($project)->safeLoad();
+// createUnsafeImmutable also puts the values into getenv(), which the
+// settings classes read. Without Docker that is the only way they arrive.
+Dotenv::createUnsafeImmutable($project)->safeLoad();
 
 $commands = [
     'connection:check' => 'check-connection',

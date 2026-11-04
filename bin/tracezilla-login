@@ -9,7 +9,9 @@ use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 
-Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+// createUnsafeImmutable also puts the values into getenv(), which the
+// settings classes read. Without Docker that is the only way they arrive.
+Dotenv::createUnsafeImmutable(dirname(__DIR__))->safeLoad();
 
 // Exchanges a tracezilla username and password for OAuth tokens once. The
 // password is not stored; later runs renew the token with the refresh token.
