@@ -26,7 +26,7 @@ final class ScenarioGeneratorTest extends TestCase
 
     public function test_it_lists_the_templates(): void
     {
-        self::assertSame(['compare-catalogs', 'confirm-credentials', 'missing-in-woocommerce'], (new ScenarioGenerator($this->project))->templates());
+        self::assertSame(['compare-catalogs', 'confirm-credentials', 'create-tracezilla-skus', 'missing-in-woocommerce'], (new ScenarioGenerator($this->project))->templates());
     }
 
     public function test_every_template_creates_three_valid_php_files_in_the_scenario_namespace(): void
@@ -49,7 +49,7 @@ final class ScenarioGeneratorTest extends TestCase
     public function test_it_rejects_an_unknown_template(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Available templates: compare-catalogs, confirm-credentials, missing-in-woocommerce');
+        $this->expectExceptionMessage('Available templates: compare-catalogs, confirm-credentials, create-tracezilla-skus, missing-in-woocommerce');
 
         (new ScenarioGenerator($this->project))->generate('my-check', 'magic');
     }

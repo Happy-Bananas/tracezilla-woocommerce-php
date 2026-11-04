@@ -80,16 +80,74 @@ final class ScenarioRunnerTest extends TestCase
         $this->runner([], [])->run('missing-scenario');
     }
 
+    public function test_a_dry_run_only_reports_the_planned_changes(): void
+    {
+        $writer = new FakeChangeWriter();
+        (new ScenarioGenerator($this->project))->generate('runner-dry-run', 'create-tracezilla-skus');
+
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-dry-run');
+
+        self::assertSame('dry_run', $result['mode']);
+        self::assertSame(['planned', 'planned'], array_column($result['changes'], 'outcome'));
+        self::assertSame([], $writer->written);
+    }
+
+    public function test_an_executed_run_writes_up_to_the_limit(): void
+    {
+        $writer = new FakeChangeWriter();
+        (new ScenarioGenerator($this->project))->generate('runner-execute', 'create-tracezilla-skus');
+
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-execute', execute: true, limit: 1);
+
+        self::assertSame('execute', $result['mode']);
+        self::assertSame(['done', 'skipped_by_limit'], array_column($result['changes'], 'outcome'));
+        self::assertSame('TZ-FRUIT-004', $writer->written[0]['data']['sku_code']);
+    }
+
+    public function test_one_failed_change_does_not_stop_the_others(): void
+    {
+        $writer = new FakeChangeWriter(failForKey: 'TZ-FRUIT-004');
+        (new ScenarioGenerator($this->project))->generate('runner-failure', 'create-tracezilla-skus');
+
+        $result = $this->runner($this->shopWithTwoNewProducts(), $this->emptyTracezilla(), $writer)->run('runner-failure', execute: true);
+
+        self::assertSame(['failed', 'done'], array_column($result['changes'], 'outcome'));
+        self::assertSame('tracezilla rejected TZ-FRUIT-004.', $result['changes'][0]['error']);
+    }
+
+    /** @return list<mixed> The fake WooCommerce answers: the catalog, then the weight unit */
+    private function shopWithTwoNewProducts(): array
+    {
+        return [
+            [
+                ['id' => 1, 'type' => 'simple', 'sku' => 'TZ-FRUIT-004', 'name' => 'Kiwi', 'weight' => '0.1'],
+                ['id' => 2, 'type' => 'simple', 'sku' => 'TZ-FRUIT-005', 'name' => 'Lime', 'weight' => '0.1'],
+            ],
+            ['id' => 'woocommerce_weight_unit', 'value' => 'kg'],
+        ];
+    }
+
+    /** @return list<mixed> */
+    private function emptyTracezilla(): array
+    {
+        return [['data' => [], 'links' => ['next_page' => null]]];
+    }
+
     /**
      * @param list<mixed> $wooCommerce
      * @param list<mixed> $tracezilla
      */
-    private function runner(array $wooCommerce, array $tracezilla): ScenarioRunner
+    private function runner(array $wooCommerce, array $tracezilla, ?FakeChangeWriter $writer = null): ScenarioRunner
     {
+        if ($writer === null) {
+            $writer = new FakeChangeWriter();
+        }
+
         return new ScenarioRunner(
             $this->project,
             FakeApis::wooCommerce($wooCommerce),
             FakeApis::tracezilla($tracezilla, $this->project.'/var'),
+            $writer,
         );
     }
 }

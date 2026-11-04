@@ -21,7 +21,7 @@ php bin/bifrost-connect help
 | `tracezilla:login` | Log in to tracezilla once and store renewable tokens |
 | `tracezilla:seed` | Create the development test data in tracezilla (dry run by default) |
 | `scenario:create <name> [--template=<template>]` | Create your own scenario in `custom/Scenarios/WooCommerce/` |
-| `scenario:run <name>` | Run a scenario (read only) |
+| `scenario:run <name> [--execute --confirm] [--limit=<n>]` | Run a scenario; changes it plans are written only with `--execute --confirm` |
 
 Commands that write take a run lock in `var/locks/`, so two scheduled runs
 never overlap. A run that finds the lock taken is skipped with exit code `75`
@@ -115,6 +115,7 @@ docker compose run --rm php php bin/bifrost-connect scenario:run product-check
 | `confirm-credentials` (default) | Reads the store status and one tracezilla SKU: a hello world |
 | `compare-catalogs` | Compares the WooCommerce catalog with the tracezilla SKUs (read only) |
 | `missing-in-woocommerce` | Lists tracezilla SKUs the shop does not sell, to decide on with the customer (read only) |
+| `create-tracezilla-skus` | Creates tracezilla SKUs for the products the shop sells (writes with `--execute --confirm`) |
 
 `scenario:create` copies three files from `templates/scenarios/<template>/` to
 `custom/Scenarios/WooCommerce/<Name>/`. They belong to the developer:
