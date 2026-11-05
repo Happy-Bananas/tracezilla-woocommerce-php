@@ -6,9 +6,9 @@ declare(strict_types=1);
 // The single entry point: runs one of the commands in bin/, taking the
 // integration lock first unless the command may run alongside others.
 
+use Bifrost\Core\Lock\FileIntegrationLock;
+use Bifrost\Core\RuntimeDirectory;
 use Dotenv\Dotenv;
-use Tracezilla\WooCommerce\Lock\FileIntegrationLock;
-use Tracezilla\WooCommerce\RuntimeDirectory;
 
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';

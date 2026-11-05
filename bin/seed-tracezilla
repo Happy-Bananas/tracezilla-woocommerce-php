@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+use Bifrost\Core\WriteMode;
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Seed\SeedDefinition;
 use Tracezilla\WooCommerce\Seed\Seeder;
@@ -11,7 +12,6 @@ use Tracezilla\WooCommerce\Seed\TracezillaSeedGateway;
 use Tracezilla\WooCommerce\Tracezilla\Client;
 use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
 use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
-use Tracezilla\WooCommerce\WriteMode;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Scenarios;
 
+use Bifrost\Core\WriteMode;
 use RuntimeException;
 use Throwable;
-use Tracezilla\WooCommerce\WriteMode;
 
 /**
  * Runs a scenario: its DataReader reads what the rules need, its BusinessRules
