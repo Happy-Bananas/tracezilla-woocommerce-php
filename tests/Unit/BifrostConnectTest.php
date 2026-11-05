@@ -70,6 +70,19 @@ final class BifrostConnectTest extends TestCase
         self::assertStringContainsString('Command: scenario:run', $errors);
     }
 
+    public function test_a_command_started_directly_is_skipped_too(): void
+    {
+        $lock = (new FileIntegrationLock($this->runtimeDirectory))->acquire('integration', ['command' => 'scenario:run']);
+        self::assertNotNull($lock);
+
+        [$exitCode, $output, $errors] = $this->runScript(dirname(__DIR__, 2).'/bin/scenario-run', 'compare');
+        $lock->release();
+
+        self::assertSame(75, $exitCode);
+        self::assertSame('', $output);
+        self::assertStringContainsString('Another integration command is already running.', $errors);
+    }
+
     /** @return array{int, string, string} */
     private function bifrostConnect(string ...$arguments): array
     {
@@ -79,7 +92,17 @@ final class BifrostConnectTest extends TestCase
     /** @return array{int, string, string} */
     private function bifrostConnectIn(string $project, string ...$arguments): array
     {
-        $command = array_merge([PHP_BINARY, $project.'/bin/bifrost-connect'], $arguments);
+        return $this->runScript($project.'/bin/bifrost-connect', ...$arguments);
+    }
+
+    /**
+     * Run a script in bin/ with its own runtime directory.
+     *
+     * @return array{int, string, string} The exit code, the output, and the errors
+     */
+    private function runScript(string $script, string ...$arguments): array
+    {
+        $command = array_merge([PHP_BINARY, $script], $arguments);
         $environment = getenv();
         $environment['TRACEZILLA_RUNTIME_DIR'] = $this->runtimeDirectory;
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, null, $environment);

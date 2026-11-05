@@ -3,18 +3,12 @@
 
 declare(strict_types=1);
 
-// The single entry point: runs one of the commands in bin/, taking the
-// integration lock first unless the command may run alongside others.
+// The single entry point: runs one of the commands in bin/. Each command that
+// must not overlap with another takes the integration's run lock itself
+// (Bifrost\Core\Lock\RunLock), so it is protected however it is started.
 
-use Bifrost\Core\Lock\FileIntegrationLock;
-use Bifrost\Core\RuntimeDirectory;
-use Dotenv\Dotenv;
-
-$project = dirname(__DIR__);
-require $project.'/vendor/autoload.php';
-// createUnsafeImmutable also puts the values into getenv(), which the
-// settings classes read. Without Docker that is the only way they arrive.
-Dotenv::createUnsafeImmutable($project)->safeLoad();
+// Each command loads .env itself, so this file needs neither .env nor the
+// PHP packages.
 
 $commands = [
     'connection:check' => 'check-connection',
@@ -26,11 +20,6 @@ $commands = [
 // A project can leave out optional commands, such as the seed. Only commands
 // whose script is in bin/ are offered.
 $commands = installedCommands($commands);
-
-// These commands may run while another command holds the integration lock.
-// Every other command takes the lock, so scheduled runs never overlap; a run
-// that finds the lock taken is skipped, not queued.
-$unlockedCommands = ['connection:check', 'tracezilla:login', 'scenario:create'];
 
 $command = 'help';
 if (isset($argv[1])) {
@@ -47,23 +36,9 @@ if (! isset($commands[$command])) {
     exit(2);
 }
 
-$lock = null;
-if (! in_array($command, $unlockedCommands, true)) {
-    $locks = new FileIntegrationLock(RuntimeDirectory::resolve($project));
-    $lock = $locks->acquire('integration', ['command' => $command]);
-    if ($lock === null) {
-        reportSkippedRun($locks->metadata('integration'));
-        exit(75);
-    }
-}
-
 $script = __DIR__.DIRECTORY_SEPARATOR.$commands[$command];
 $arguments = array_slice($argv, 2);
 passthru(shellCommand($script, $arguments), $exitCode);
-
-if ($lock !== null) {
-    $lock->release();
-}
 exit($exitCode);
 
 /**
@@ -96,24 +71,6 @@ function printHelp(array $commandNames): void
     }
     echo "\nRun a command with its options, for example:\n";
     echo "  php bin/bifrost-connect connection:check --json\n";
-}
-
-/**
- * Explain that another command holds the lock, using what it wrote into the
- * lock file.
- *
- * @param array<string, mixed> $metadata
- */
-function reportSkippedRun(array $metadata): void
-{
-    fwrite(STDERR, "Another integration command is already running.\n");
-    if (isset($metadata['command']) && is_string($metadata['command'])) {
-        fwrite(STDERR, "Command: {$metadata['command']}\n");
-    }
-    if (isset($metadata['acquired_at']) && is_string($metadata['acquired_at'])) {
-        fwrite(STDERR, "Started: {$metadata['acquired_at']}\n");
-    }
-    fwrite(STDERR, "This invocation was skipped safely; the next scheduled run can retry.\n");
 }
 
 /**
