@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Scenarios;
 
+use Bifrost\Core\WriteMode;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Tracezilla\WooCommerce\Scenarios\ScenarioGenerator;
 use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
-use Tracezilla\WooCommerce\WriteMode;
 
 final class ScenarioRunnerTest extends TestCase
 {

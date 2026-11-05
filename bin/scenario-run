@@ -7,6 +7,7 @@ declare(strict_types=1);
 // BusinessRules decide the result, and the changes the rules planned are
 // written only with --execute. The result is printed as JSON.
 
+use Bifrost\Core\WriteMode;
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Configuration;
 use Tracezilla\WooCommerce\Scenarios\LiveChangeWriter;
@@ -18,7 +19,6 @@ use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
 use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
-use Tracezilla\WooCommerce\WriteMode;
 
 $project = dirname(__DIR__);
 require $project.'/vendor/autoload.php';

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use Bifrost\Core\Lock\FileIntegrationLock;
 use PHPUnit\Framework\TestCase;
-use Tracezilla\WooCommerce\Lock\FileIntegrationLock;
 
 final class BifrostConnectTest extends TestCase
 {

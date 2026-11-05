@@ -4,9 +4,16 @@
     "description": "Framework-neutral PHP templates for integrating WooCommerce with tracezilla.",
     "type": "project",
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/Happy-Bananas/bifrost-core"
+        }
+    ],
     "require": {
         "php": "^8.3",
         "guzzlehttp/guzzle": "^7.10",
+        "happy-bananas/bifrost-core": "^0.1",
         "symfony/yaml": "^7.3",
         "vlucas/phpdotenv": "^5.6"
     },
