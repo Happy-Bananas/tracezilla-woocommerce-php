@@ -7,6 +7,10 @@ declare(strict_types=1);
 // BusinessRules decide the result, and the changes the rules planned are
 // written only with --execute. The result is printed as JSON.
 
+use Bifrost\Core\Tracezilla\Client as TracezillaClient;
+use Bifrost\Core\Tracezilla\SkuCreator;
+use Bifrost\Core\Tracezilla\TokenProvider;
+use Bifrost\Core\Tracezilla\TracezillaConfiguration;
 use Bifrost\Core\WriteMode;
 use Dotenv\Dotenv;
 use Tracezilla\WooCommerce\Configuration;
@@ -14,10 +18,6 @@ use Tracezilla\WooCommerce\Scenarios\LiveChangeWriter;
 use Tracezilla\WooCommerce\Scenarios\ScenarioRunner;
 use Tracezilla\WooCommerce\Scenarios\TracezillaReader;
 use Tracezilla\WooCommerce\Scenarios\WooCommerceReader;
-use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
-use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
 
 $project = dirname(__DIR__);

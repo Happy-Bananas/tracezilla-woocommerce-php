@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Scenarios;
 
+use Bifrost\Core\Tracezilla\SkuCreator;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Tracezilla\WooCommerce\Scenarios\LiveChangeWriter;
-use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 
 final class LiveChangeWriterTest extends TestCase
 {

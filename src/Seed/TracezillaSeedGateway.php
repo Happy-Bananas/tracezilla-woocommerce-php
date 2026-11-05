@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Seed;
 
+use Bifrost\Core\Tracezilla\Client;
+use Bifrost\Core\Tracezilla\SkuCreator;
 use RuntimeException;
-use Tracezilla\WooCommerce\Tracezilla\Client;
-use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 
 /**
  * The seed's access to tracezilla: it looks up existing records and creates

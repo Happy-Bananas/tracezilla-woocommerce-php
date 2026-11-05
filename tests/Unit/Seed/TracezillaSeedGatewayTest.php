@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Seed;
 
+use Bifrost\Core\Tracezilla\Client;
+use Bifrost\Core\Tracezilla\OAuthTokens;
+use Bifrost\Core\Tracezilla\TokenProvider;
+use Bifrost\Core\Tracezilla\TokenStore;
+use Bifrost\Core\Tracezilla\TracezillaConfiguration;
 use DateTimeImmutable;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Handler\MockHandler;
@@ -13,11 +18,6 @@ use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Tracezilla\WooCommerce\Seed\TracezillaSeedGateway;
-use Tracezilla\WooCommerce\Tracezilla\Client;
-use Tracezilla\WooCommerce\Tracezilla\OAuthTokens;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TokenStore;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 
 final class TracezillaSeedGatewayTest extends TestCase
 {

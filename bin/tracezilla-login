@@ -3,9 +3,9 @@
 
 declare(strict_types=1);
 
+use Bifrost\Core\Tracezilla\TokenProvider;
+use Bifrost\Core\Tracezilla\TracezillaConfiguration;
 use Dotenv\Dotenv;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 
 require dirname(__DIR__).'/vendor/autoload.php';
 

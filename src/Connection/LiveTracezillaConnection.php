@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Connection;
 
-use Tracezilla\WooCommerce\Tracezilla\Client;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
+use Bifrost\Core\Tracezilla\Client;
+use Bifrost\Core\Tracezilla\TokenProvider;
+use Bifrost\Core\Tracezilla\TracezillaConfiguration;
 
 /**
  * Asks the real tracezilla team for one SKU.

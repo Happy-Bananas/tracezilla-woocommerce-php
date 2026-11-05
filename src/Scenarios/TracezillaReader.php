@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Scenarios;
 
-use Tracezilla\WooCommerce\Tracezilla\Client;
+use Bifrost\Core\Tracezilla\Client;
 
 /**
  * Read-only access to the tracezilla API for a scenario's DataReader. Paths are
