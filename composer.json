@@ -7,13 +7,14 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/Happy-Bananas/bifrost-core"
+            "url": "https://github.com/Happy-Bananas/bifrost-core",
+            "no-api": true
         }
     ],
     "require": {
         "php": "^8.3",
         "guzzlehttp/guzzle": "^7.10",
-        "happy-bananas/bifrost-core": "^0.4",
+        "happy-bananas/bifrost-core": "^0.5",
         "vlucas/phpdotenv": "^5.6"
     },
     "require-dev": {

@@ -7,6 +7,7 @@ declare(strict_types=1);
 // BusinessRules decide the result, and the changes the rules planned are
 // written only with --execute. The result is printed as JSON.
 
+use Bifrost\Core\Lock\RunLock;
 use Bifrost\Core\Tracezilla\Client as TracezillaClient;
 use Bifrost\Core\Tracezilla\SkuCreator;
 use Bifrost\Core\Tracezilla\TokenProvider;
@@ -68,6 +69,8 @@ try {
     fwrite(STDERR, $exception->getMessage()."\n");
     exit(2);
 }
+// Before reading anything: no other integration command may run meanwhile.
+RunLock::takeOrExit($project, 'scenario:run');
 
 try {
     $wooCommerce = new WooCommerceClient(Configuration::fromEnvironment());
