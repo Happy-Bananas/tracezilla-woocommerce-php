@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Scenarios;
 
+use Bifrost\Core\Tracezilla\Client as TracezillaClient;
+use Bifrost\Core\Tracezilla\OAuthTokens;
+use Bifrost\Core\Tracezilla\TokenProvider;
+use Bifrost\Core\Tracezilla\TokenStore;
+use Bifrost\Core\Tracezilla\TracezillaConfiguration;
 use DateTimeImmutable;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Handler\MockHandler;
@@ -12,11 +17,6 @@ use GuzzleHttp\Psr7\Response;
 use Tracezilla\WooCommerce\Configuration;
 use Tracezilla\WooCommerce\Scenarios\TracezillaReader;
 use Tracezilla\WooCommerce\Scenarios\WooCommerceReader;
-use Tracezilla\WooCommerce\Tracezilla\Client as TracezillaClient;
-use Tracezilla\WooCommerce\Tracezilla\OAuthTokens;
-use Tracezilla\WooCommerce\Tracezilla\TokenProvider;
-use Tracezilla\WooCommerce\Tracezilla\TokenStore;
-use Tracezilla\WooCommerce\Tracezilla\TracezillaConfiguration;
 use Tracezilla\WooCommerce\WooCommerce\Client as WooCommerceClient;
 
 /**

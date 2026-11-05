@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tracezilla\WooCommerce\Scenarios;
 
+use Bifrost\Core\Tracezilla\SkuCreator;
 use InvalidArgumentException;
-use Tracezilla\WooCommerce\Tracezilla\SkuCreator;
 
 /**
  * Carries out planned changes against the real APIs. Each action a scenario
