@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f1cedcbbeaf565001239eec9b3152291",
+    "content-hash": "5f0d7526ef91f21ecbdf910beb3f8dbe",
     "packages": [
         {
             "name": "graham-campbell/result-type",
@@ -401,16 +401,16 @@
         },
         {
             "name": "happy-bananas/bifrost-core",
-            "version": "v0.2.0",
+            "version": "v0.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Happy-Bananas/bifrost-core.git",
-                "reference": "c0f5fb0eaf3a0a6eef0ba7fd6ab2af99f2cca29d"
+                "reference": "e3ac3bae829c496e399d19d1f605c1e7d3c45031"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Happy-Bananas/bifrost-core/zipball/c0f5fb0eaf3a0a6eef0ba7fd6ab2af99f2cca29d",
-                "reference": "c0f5fb0eaf3a0a6eef0ba7fd6ab2af99f2cca29d",
+                "url": "https://api.github.com/repos/Happy-Bananas/bifrost-core/zipball/e3ac3bae829c496e399d19d1f605c1e7d3c45031",
+                "reference": "e3ac3bae829c496e399d19d1f605c1e7d3c45031",
                 "shasum": ""
             },
             "require": {
@@ -441,10 +441,10 @@
             ],
             "description": "The shared core of BifrostConnect integrations between tracezilla and external services.",
             "support": {
-                "source": "https://github.com/Happy-Bananas/bifrost-core/tree/v0.2.0",
+                "source": "https://github.com/Happy-Bananas/bifrost-core/tree/v0.3.0",
                 "issues": "https://github.com/Happy-Bananas/bifrost-core/issues"
             },
-            "time": "2026-11-05T11:11:55+00:00"
+            "time": "2026-11-05T12:30:51+00:00"
         },
         {
             "name": "phpoption/phpoption",
