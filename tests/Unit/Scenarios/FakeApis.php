@@ -46,8 +46,8 @@ final class FakeApis
     {
         $store = new TokenStore($tokenDirectory.'/token.json');
         $store->save(new OAuthTokens('access', 'refresh', new DateTimeImmutable('+300 days')));
-        $configuration = new TracezillaConfiguration('https://tracezilla.test', 'team', 'id', 'secret', $store->path(), 5, 5);
-        $tokens = new TokenProvider(new HttpClient(['handler' => HandlerStack::create(new MockHandler())]), $store, 'id', 'secret');
+        $configuration = new TracezillaConfiguration('https://tracezilla.test', 'team', 'id', 'secret', 'api-user', 'api-password', $store->path(), 5, 5);
+        $tokens = new TokenProvider(new HttpClient(['handler' => HandlerStack::create(new MockHandler())]), $store, 'id', 'secret', 'api-user', 'api-password');
         $http = new HttpClient(['handler' => HandlerStack::create(self::responses($answers)), 'base_uri' => 'https://tracezilla.test/api/v1/team/']);
 
         return new TracezillaClient($configuration, $tokens, $http);

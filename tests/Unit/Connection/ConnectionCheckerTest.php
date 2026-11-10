@@ -45,7 +45,7 @@ final class ConnectionCheckerTest extends TestCase
     {
         $checker = new ConnectionChecker(
             FakeWooCommerceConnection::answering(['environment' => ['site_url' => 'http://localhost:8080', 'version' => '11.2.1']]),
-            FakeTracezillaConnection::failingWith('No tracezilla token is stored. Run bin/bifrost-connect tracezilla:login first.'),
+            FakeTracezillaConnection::failingWith('tracezilla token request failed with HTTP 400: invalid_grant'),
             'dev-team',
         );
 
@@ -53,7 +53,7 @@ final class ConnectionCheckerTest extends TestCase
 
         self::assertSame('failed', $result['status']);
         self::assertTrue($result['woocommerce']['connected']);
-        self::assertStringContainsString('bin/bifrost-connect tracezilla:login', $result['tracezilla']['error']);
+        self::assertStringContainsString('invalid_grant', $result['tracezilla']['error']);
     }
 
     public function test_unexpected_responses_count_as_failures(): void
