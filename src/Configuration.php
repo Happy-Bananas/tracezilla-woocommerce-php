@@ -11,6 +11,9 @@ use RuntimeException;
  */
 final readonly class Configuration
 {
+    /** Hosts of a test store on this computer, which may use plain http://. */
+    private const LOCAL_HOSTS = ['localhost', '127.0.0.1', 'host.docker.internal'];
+
     public function __construct(
         public string $wooCommerceUrl,
         public string $consumerKey,
@@ -23,12 +26,36 @@ final readonly class Configuration
     public static function fromEnvironment(): self
     {
         return new self(
-            rtrim(self::required('WOOCOMMERCE_URL'), '/'),
+            self::storeUrl(),
             self::required('WOOCOMMERCE_CONSUMER_KEY'),
             self::required('WOOCOMMERCE_CONSUMER_SECRET'),
             (float) self::optional('HTTP_TIMEOUT', '30'),
             (float) self::optional('HTTP_CONNECT_TIMEOUT', '10'),
         );
+    }
+
+    /**
+     * The store's address without a trailing slash. A real store must use
+     * https://, because the consumer key and secret go with every request.
+     */
+    private static function storeUrl(): string
+    {
+        $url = rtrim(self::required('WOOCOMMERCE_URL'), '/');
+        if (self::isPlainHttpToAnotherComputer($url)) {
+            throw new RuntimeException("WOOCOMMERCE_URL must start with https://: {$url}. Plain http:// would send the API keys unencrypted; it is allowed only for a test store on this computer.");
+        }
+
+        return $url;
+    }
+
+    private static function isPlainHttpToAnotherComputer(string $url): bool
+    {
+        if (! str_starts_with(strtolower($url), 'http://')) {
+            return false;
+        }
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return ! in_array($host, self::LOCAL_HOSTS, true);
     }
 
     private static function required(string $name): string

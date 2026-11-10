@@ -42,6 +42,31 @@ final class ConfigurationTest extends TestCase
         self::assertSame(4.0, $configuration->connectTimeout);
     }
 
+    public function test_a_real_store_must_use_https(): void
+    {
+        putenv('WOOCOMMERCE_URL=http://shop.example');
+        putenv('WOOCOMMERCE_CONSUMER_KEY=ck_test');
+        putenv('WOOCOMMERCE_CONSUMER_SECRET=cs_test');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('WOOCOMMERCE_URL must start with https://');
+
+        Configuration::fromEnvironment();
+    }
+
+    public function test_the_local_sandbox_may_use_plain_http(): void
+    {
+        putenv('WOOCOMMERCE_URL=http://host.docker.internal:8080');
+        putenv('WOOCOMMERCE_CONSUMER_KEY=ck_sandbox');
+        putenv('WOOCOMMERCE_CONSUMER_SECRET=cs_sandbox');
+
+        self::assertSame('http://host.docker.internal:8080', Configuration::fromEnvironment()->wooCommerceUrl);
+
+        putenv('WOOCOMMERCE_URL=http://localhost:8080');
+
+        self::assertSame('http://localhost:8080', Configuration::fromEnvironment()->wooCommerceUrl);
+    }
+
     public function test_it_rejects_missing_credentials(): void
     {
         putenv('WOOCOMMERCE_URL=https://shop.example');
