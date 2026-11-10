@@ -6,8 +6,7 @@ declare(strict_types=1);
 // Fills a development company in tracezilla with test data. The command
 // itself is in bifrost-core (Bifrost\Core\Seed\SeedCommand); it uses
 // seeds/tracezilla.yaml in this project if you add one, or else the standard
-// test dataset. --execute writes only into the team named by
-// TRACEZILLA_SEED_ALLOWED_TEAM in .env.
+// test dataset.
 
 use Bifrost\Core\Seed\SeedCommand;
 use Dotenv\Dotenv;
