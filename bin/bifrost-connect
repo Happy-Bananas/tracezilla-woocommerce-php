@@ -12,7 +12,6 @@ declare(strict_types=1);
 
 $commands = [
     'connection:check' => 'check-connection',
-    'tracezilla:login' => 'tracezilla-login',
     'tracezilla:seed' => 'seed-tracezilla',
     'scenario:create' => 'scenario-create',
     'scenario:run' => 'scenario-run',

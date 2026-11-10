@@ -9,6 +9,17 @@ Changes in the shared code (tracezilla client, login, run lock, seed) are in
 the [bifrost-core changelog](https://github.com/Happy-Bananas/bifrost-core/blob/main/CHANGELOG.md)
 and reach a project with `composer update happy-bananas/bifrost-core`.
 
+## 0.2.0 (2026-11-10)
+
+- The integration logs in to tracezilla by itself with the API user in `.env`.
+  `tracezilla:login` is removed.
+
+What a project changes: add `TRACEZILLA_USERNAME` and `TRACEZILLA_PASSWORD`
+(the API user from tracezilla's Resource Owner Password Credentials) to
+`.env`, delete `bin/tracezilla-login`, remove `tracezilla:login` from
+`bin/bifrost-connect`, and run
+`composer require happy-bananas/bifrost-core:^0.7`.
+
 ## 0.1.0 (2026-11-10)
 
 First release.
